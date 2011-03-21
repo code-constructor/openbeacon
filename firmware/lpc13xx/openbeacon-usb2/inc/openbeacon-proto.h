@@ -34,6 +34,8 @@
 #define RFBPROTO_BEACONTRACKER   24
 #define RFBPROTO_PROXTRACKER     42
 #define RFBPROTO_PROXREPORT      69
+#define RFBPROTO_BEACONPOSITIONTRACKER	27
+#define RFBPROTO_BEACONCOLLECTEDFORWARDER 28
 
 #define PROX_MAX 4
 
@@ -99,8 +101,42 @@ typedef struct
   uint16_t crc;
 } PACKED TBeaconWrapper;
 
+typedef struct
+{
+  uint8_t size, proto;
+} PACKED TBeaconHeader;
+
+//struct for iCampus-Wildau Project
+typedef struct
+{
+	TBeaconHeader hdr;
+	uint8_t building;
+	uint8_t strengthAndZ; //first 4 bits the strength
+	uint16_t x;
+	uint16_t y;
+	uint16_t oid;
+	uint32_t seq;
+	uint16_t crc;
+} PACKED TBeaconPositionTracker;
+
+//struct to forward all collected data of a tag
+typedef struct
+{
+	TBeaconHeader hdr;
+	uint8_t oid; //own id
+	uint16_t tagId; //id of the tag
+	uint16_t signals; //quantitative evaluation of all received signal strengths(0-3)
+	uint16_t x; //x-coordinate
+	uint16_t y; //y-coordinate
+	uint8_t building; //building id
+	uint16_t reserved;
+	uint16_t crc;
+} PACKED TBeaconCollectedForwarder;
+
 typedef union
 {
+  TBeaconCollectedForwarder forwarder;
+  TBeaconPositionTracker pos;
   TBeaconWrapper pkt;
   uint32_t block[XXTEA_BLOCK_COUNT];
   uint8_t byte[XXTEA_BLOCK_COUNT * 4];

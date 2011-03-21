@@ -189,7 +189,7 @@ void nRF_Task(void *pvParameters)
 	int t, active;
 	uint8_t strength, status;
 	uint16_t crc;
-	uint32_t seq, oid;
+	uint32_t seq;
 	portTickType LastUpdateTicks, Ticks;
 
 	(void) pvParameters;
@@ -248,11 +248,11 @@ void nRF_Task(void *pvParameters)
 				// verify the CRC checksum
 				crc = crc16(g_Beacon.byte, sizeof(g_Beacon) - sizeof(uint16_t));
 
-				if (ntohs (g_Beacon.pkt.crc) == crc)
+				if (ntohs (g_Beacon.pos.crc) == crc)
 				{
 					pin_led(GPIO_LED1);
 
-					oid = ntohs (g_Beacon.pkt.oid);
+					/*oid = ntohs (g_Beacon.pkt.oid);
 					if (((g_Beacon.pkt.flags & RFBFLAGS_SENSOR) > 0) && active)
 						debug_printf("BUTTON: %i\n", oid);
 
@@ -288,11 +288,28 @@ void nRF_Task(void *pvParameters)
 						}
 						break;
 
+					case RFBPROTO_BEACONPOSITIONTRACKER:
+						debug_printf("tagID: %i; strength %i",
+											 ntohs(g_Beacon.pos.oid),
+											 (g_Beacon.pos.strengthAndZ >> 4));
+						break;
+
 					default:
 						strength = 0xFF;
 						if (active)
 							debug_printf("Unknown Protocol: %i\n",
 									(int) g_Beacon.pkt.proto);
+					}*/
+
+					switch (g_Beacon.pos.hdr.proto){
+						case RFBPROTO_BEACONPOSITIONTRACKER:
+							debug_printf("tagID: %i; strength %i\n",
+										    ntohs(g_Beacon.pos.oid),
+								  (g_Beacon.pos.strengthAndZ >> 4));
+						break;
+
+						default:
+							debug_printf("Unknown Protocol: %i\n",g_Beacon.pos.hdr.proto);
 					}
 
 					if (strength < 0xFF)

@@ -32,6 +32,7 @@
 #define RFBPROTO_BEACONTRACKER	23
 #define RFBPROTO_BEACONNODE	24
 #define RFBPROTO_BEACONVOTESTATS	25
+#define RFBPROTO_BEACONPOSITIONTRACKER	27
 
 #define RFBFLAGS_ACK		0x01
 #define RFBFLAGS_SENSOR		0x02
@@ -57,8 +58,22 @@ typedef struct
   u_int16_t crc;
 } TBeaconTracker;
 
+//struct for iCampus-Wildau Project
+typedef struct
+{
+	TBeaconHeader hdr;
+	u_int8_t building;
+	u_int8_t strengthAndZ; //first 4 bits the strength
+	u_int16_t x;
+	u_int16_t y;
+	u_int16_t oid;
+	u_int32_t seq;
+	u_int16_t crc;
+} TBeaconPositionTracker;
+
 typedef union
 {
+  TBeaconPositionTracker pos;
   TBeaconTracker pkt;
   u_int32_t data[TEA_ENCRYPTION_BLOCK_COUNT];
   u_int8_t datab[TEA_ENCRYPTION_BLOCK_COUNT * sizeof (u_int32_t)];

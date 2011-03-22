@@ -197,15 +197,15 @@ showInformationFromPosTracker(void)
 		DumpStringToUSB ("PositonTracker: oid:");
 		DumpUIntToUSB (swapshort (g_Beacon.pos.oid));
 		DumpStringToUSB (", seq:");
-		DumpUIntToUSB (swapshort (g_Beacon.pos.seq));
+		DumpUIntToUSB (swaplong(g_Beacon.pos.seq));
 		DumpStringToUSB (", strength:");
 		DumpUIntToUSB (g_Beacon.pos.strengthAndZ >> 4);
 		DumpStringToUSB (", building:");
 		DumpUIntToUSB (g_Beacon.pos.building);
 		DumpStringToUSB (", x:");
-		DumpUIntToUSB (g_Beacon.pos.x);
+		DumpUIntToUSB (swapshort(g_Beacon.pos.x));
 		DumpStringToUSB (", y:");
-		DumpUIntToUSB (g_Beacon.pos.y);
+		DumpUIntToUSB (swapshort(g_Beacon.pos.y));
 		DumpStringToUSB (", z:");
 		DumpUIntToUSB (g_Beacon.pos.strengthAndZ & 0x0F);
 		DumpStringToUSB ("\n\r");

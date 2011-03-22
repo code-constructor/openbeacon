@@ -40,4 +40,9 @@ extern void vInitProtocolLayer (void);
 extern int PtSetFifoLifetimeSeconds (int Seconds);
 extern int PtGetFifoLifetimeSeconds (void);
 
+void
+showInformationFromPosTracker(void);
+void
+showInformationFromTracker(void);
+
 #endif/*__PROTO_H__*/

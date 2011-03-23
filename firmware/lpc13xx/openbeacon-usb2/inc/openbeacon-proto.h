@@ -55,6 +55,10 @@
 #define READ_RES__DENIED		0x01
 #define READ_RES__UNKNOWN_CMD		0xFF
 
+/*collection parameter*/
+#define COLLECTION_SIZE 10
+
+
 typedef struct
 {
   uint8_t strength;

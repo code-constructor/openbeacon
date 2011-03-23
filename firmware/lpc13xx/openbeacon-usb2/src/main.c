@@ -38,6 +38,9 @@
 /* OpenBeacon packet */
 static TBeaconEnvelope g_Beacon;
 
+/* ForwardCollection array */
+static TBeaconCollectedForwarder g_collection[COLLECTION_SIZE];
+
 /* Default TEA encryption key of the tag - MUST CHANGE ! */
 static const uint32_t xxtea_key[4] =
 { 0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF };
@@ -139,6 +142,36 @@ void main_menue(uint8_t cmd)
 		debug_printf("Unknown command '%c' - please press 'H' for help \n", cmd);
 	}
 	debug_printf("\n# ");
+}
+
+/*
+ * collect the data of all received tags
+ * and cache them
+ */
+static
+void collectForwardData(void)
+{
+	int i;
+	for(i = 0; i < COLLECTION_SIZE; i++){
+		//update existing tag
+		if(g_collection[i].tagId == g_Beacon.pos.oid && g_collection[i].signals != 0){
+			debug_printf("update signal for tagID: %i", g_Beacon.pos.oid);
+			g_collection[i].signals = g_collection[i].signals + 1; //increment signals
+			return;
+		}
+
+		//add new tag to collection
+		if(g_collection[i].signals == 0){
+			debug_printf("add new tag to collection %i /n/r", ntohs(g_Beacon.pos.oid));
+			g_collection[i].oid = 1;
+			g_collection[i].x = g_Beacon.pos.x;
+			g_collection[i].y = g_Beacon.pos.y;
+			g_collection[i].tagId = g_Beacon.pos.oid;
+			g_collection[i].signals = 1; //dummy value
+			g_collection[i].building = g_Beacon.pos.building;
+			return;
+		}
+	}
 }
 
 static
@@ -306,6 +339,8 @@ void nRF_Task(void *pvParameters)
 							debug_printf("tagID: %i; strength %i\n",
 										    ntohs(g_Beacon.pos.oid),
 								  (g_Beacon.pos.strengthAndZ >> 4));
+							//add received data to collection array
+							collectForwardData();
 						break;
 
 						default:
@@ -331,13 +366,16 @@ void nRF_Task(void *pvParameters)
 
 			/* setup tracking packet */
 			bzero(&g_Beacon, sizeof(g_Beacon));
-			g_Beacon.pkt.oid = ntohs ((uint16_t)device_uuid[3]);
+			/*g_Beacon.pkt.oid = ntohs ((uint16_t)device_uuid[3]);
 			g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
 			g_Beacon.pkt.p.tracker.strength = seq % 8;
-			g_Beacon.pkt.p.tracker.seq = htonl(seq++);
+			g_Beacon.pkt.p.tracker.seq = htonl(seq++);*/
+			g_Beacon.forwarder = g_collection[0];
+			g_Beacon.forwarder.hdr.proto = RFBPROTO_BEACONCOLLECTEDFORWARDER;
+			g_Beacon.forwarder.hdr.size = sizeof(g_Beacon);
 
 			/* send away packet */
-			nRF_tx(g_Beacon.pkt.p.tracker.strength);
+			nRF_tx(7);
 		}
 
 		if (UARTCount)
@@ -370,6 +408,11 @@ int main(void)
 	/* wait on boot - debounce */
 	for (i = 0; i < 2000000; i++)
 		;
+
+	/* init g_collection*/
+	for(int i = 0; i < COLLECTION_SIZE; i++)
+		g_collection[i].signals = 0;
+
 	/* initialize  pins */
 	pin_init();
 	/* Init SPI */

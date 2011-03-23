@@ -166,6 +166,8 @@ vnRFtaskRx (void *parameter)
 	      	  case RFBPROTO_BEACONTRACKER:
 	      		showInformationFromTracker();
 	      		break;
+	      	  case RFBPROTO_BEACONCOLLECTEDFORWARDER:
+	      		showInformationFromForwarder();
 	      	  default:
 	      		DumpStringToUSB ("cant read Protocol : ");
 	      		DumpUIntToUSB (g_Beacon.pos.hdr.proto);
@@ -181,6 +183,33 @@ vnRFtaskRx (void *parameter)
 	}
       nRFAPI_ClearIRQ (MASK_IRQ_FLAGS);
     }
+}
+
+/**
+ * show information for RFBPROTO_BEACONPOSITIONTRACKER Protocol
+ */
+void
+showInformationFromForwarder(void)
+{
+	u_int16_t crc;
+		   // verify the crc checksum
+		crc = crc16 (g_Beacon.datab,
+				     sizeof (g_Beacon) - sizeof (g_Beacon.forwarder.crc));
+		if ((swapshort (g_Beacon.forwarder.crc) == crc)){
+			DumpStringToUSB ("Forwarder: oid:");
+			DumpUIntToUSB (swapshort (g_Beacon.forwarder.oid));
+			DumpStringToUSB (", signals:");
+			DumpUIntToUSB (swaplong(g_Beacon.forwarder.signals));
+			DumpStringToUSB (", tagId:");
+			DumpUIntToUSB (g_Beacon.forwarder.tagId);
+			DumpStringToUSB (", x:");
+			DumpUIntToUSB (swapshort(g_Beacon.forwarder.x));
+			DumpStringToUSB (", y:");
+			DumpUIntToUSB (swapshort(g_Beacon.forwarder.y));
+			DumpStringToUSB (", building:");
+			DumpUIntToUSB (g_Beacon.forwarder.building);
+			DumpStringToUSB ("\n\r");
+		}
 }
 
 /**

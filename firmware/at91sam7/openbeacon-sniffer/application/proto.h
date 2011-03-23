@@ -44,5 +44,7 @@ void
 showInformationFromPosTracker(void);
 void
 showInformationFromTracker(void);
+void
+showInformationFromForwarder(void);
 
 #endif/*__PROTO_H__*/

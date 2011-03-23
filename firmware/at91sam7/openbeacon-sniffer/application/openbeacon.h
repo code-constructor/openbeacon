@@ -30,6 +30,7 @@
 
 #define RFBPROTO_BEACONTRACKER	23
 #define RFBPROTO_BEACONPOSITIONTRACKER	27
+#define RFBPROTO_BEACONCOLLECTEDFORWARDER 28
 
 #define RFBFLAGS_ACK		0x01
 #define RFBFLAGS_SENSOR		0x02
@@ -61,8 +62,23 @@ typedef struct
 	u_int16_t crc;
 } __attribute__ ((packed)) TBeaconPositionTracker;
 
+//struct to forward all collected data of a tag
+typedef struct
+{
+	TBeaconHeader hdr;
+	u_int8_t oid; //own id
+	u_int16_t tagId; //id of the tag
+	u_int16_t signals; //quantitative evaluation of all received signal strengths(0-3)
+	u_int16_t x; //x-coordinate
+	u_int16_t y; //y-coordinate
+	u_int8_t building; //building id
+	u_int16_t reserved;
+	u_int16_t crc;
+} __attribute__ ((packed)) TBeaconCollectedForwarder;
+
 typedef union
 {
+  TBeaconCollectedForwarder forwarder;
   TBeaconPositionTracker pos;
   TBeaconTracker pkt;
   u_int32_t data[TEA_ENCRYPTION_BLOCK_COUNT];

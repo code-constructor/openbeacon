@@ -166,7 +166,7 @@ xxtea_encode (void)
     }
 }
 
-//compare two 4bit numbers to an byte
+//compare two 4bit numbers to one byte
 static unsigned char
 compare(unsigned char a, unsigned char b){
 	unsigned char ret;
@@ -222,27 +222,15 @@ main (void)
   if (code_block != 0xFFFF)
     while (1)
       {
-	/*g_MacroBeacon.rf_setup = NRF_RFOPTIONS | ((i & 3) << 1);
-	g_MacroBeacon.env.pkt.hdr.size = sizeof (TBeaconTracker);
-	g_MacroBeacon.env.pkt.hdr.proto = RFBPROTO_BEACONTRACKER;
-	g_MacroBeacon.env.pkt.flags = CONFIG_PIN_SENSOR ? 0 : RFBFLAGS_SENSOR;
-	g_MacroBeacon.env.pkt.strength = i;
-	g_MacroBeacon.env.pkt.seq = htonl (seq);
-	g_MacroBeacon.env.pkt.oid = htonl (oid);
-	g_MacroBeacon.env.pkt.reserved = 0;
-	crc = crc16 (g_MacroBeacon.env.datab,
-		     sizeof (g_MacroBeacon.env.pkt) -
-		     sizeof (g_MacroBeacon.env.pkt.crc));
-	g_MacroBeacon.env.pkt.crc = htons (crc);*/
 
     g_MacroBeacon.env.pos.hdr.size = sizeof (TBeaconPositionTracker);
     g_MacroBeacon.env.pos.hdr.proto = RFBPROTO_BEACONPOSITIONTRACKER;
     g_MacroBeacon.rf_setup = NRF_RFOPTIONS | ((i & 3) << 1);
-    g_MacroBeacon.env.pos.building = 10;
+    g_MacroBeacon.env.pos.building = 0;
+    g_MacroBeacon.env.pos.x = htons(1);
     g_MacroBeacon.env.pos.y = htons(2);
-    g_MacroBeacon.env.pos.x = htons(5);
-    g_MacroBeacon.env.pos.strengthAndZ = compare(i, 7);
-    g_MacroBeacon.env.pos.oid = htons((u_int16_t)oid);
+    g_MacroBeacon.env.pos.strengthAndZ = compare(i, 3); //compare the strength and z to a uint8
+    g_MacroBeacon.env.pos.oid = htons(oid);
     g_MacroBeacon.env.pos.seq = htonl(seq);
     crc = crc16 (g_MacroBeacon.env.datab,
     	    		     sizeof (g_MacroBeacon.env.pos) -

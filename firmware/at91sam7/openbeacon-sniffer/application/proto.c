@@ -164,10 +164,11 @@ vnRFtaskRx (void *parameter)
 	      		showInformationFromPosTracker();
 	      		break;
 	      	  case RFBPROTO_BEACONTRACKER:
-	      		showInformationFromTracker();
+	      		//showInformationFromTracker();
 	      		break;
 	      	  case RFBPROTO_BEACONCOLLECTEDFORWARDER:
 	      		showInformationFromForwarder();
+	      		break;
 	      	  default:
 	      		DumpStringToUSB ("cant read Protocol : ");
 	      		DumpUIntToUSB (g_Beacon.pos.hdr.proto);
@@ -197,11 +198,17 @@ showInformationFromForwarder(void)
 				     sizeof (g_Beacon) - sizeof (g_Beacon.forwarder.crc));
 		if ((swapshort (g_Beacon.forwarder.crc) == crc)){
 			DumpStringToUSB ("Forwarder: oid:");
-			DumpUIntToUSB (swapshort (g_Beacon.forwarder.oid));
-			DumpStringToUSB (", signals:");
-			DumpUIntToUSB (swaplong(g_Beacon.forwarder.signals));
+			DumpUIntToUSB (g_Beacon.forwarder.oid);
+			DumpStringToUSB (", signals[0]:");
+			DumpUIntToUSB (swapshort(g_Beacon.forwarder.signals) & 0x000F);
+			DumpStringToUSB (", signals[1]:");
+			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 4) & 0x000F);
+			DumpStringToUSB (", signals[2]:");
+			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 8) & 0x000F);
+			DumpStringToUSB (", signals[3]:");
+			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 12) & 0x000F);
 			DumpStringToUSB (", tagId:");
-			DumpUIntToUSB (g_Beacon.forwarder.tagId);
+			DumpUIntToUSB (swapshort(g_Beacon.forwarder.tagId));
 			DumpStringToUSB (", x:");
 			DumpUIntToUSB (swapshort(g_Beacon.forwarder.x));
 			DumpStringToUSB (", y:");

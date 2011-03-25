@@ -310,7 +310,8 @@ void nRF_Task(void *pvParameters)
 						case RFBPROTO_BEACONPOSITIONTRACKER:
 							//add received data to collection array
 							collectForwardData();
-							debug_printf("%i:%i\n",ntohs(g_Beacon.pos.oid) ,((g_Beacon.pos.strengthAndZ) >> 4));
+							if(active)
+								debug_printf("%i:%i\n",ntohs(g_Beacon.pos.oid) ,((g_Beacon.pos.strengthAndZ) >> 4));
 						break;
 
 						default:

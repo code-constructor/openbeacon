@@ -248,7 +248,8 @@ void nRF_Task(void *pvParameters)
 	(void) pvParameters;
 
 	/* Initialize OpenBeacon nRF24L01 interface */
-	if (!nRFAPI_Init(81, broadcast_mac, sizeof(broadcast_mac), 0))
+	//first number equal frequence
+	if (!nRFAPI_Init(77, broadcast_mac, sizeof(broadcast_mac), 0))
 		/* bail out if can't initialize */
 		for (;;)
 		{
@@ -310,6 +311,7 @@ void nRF_Task(void *pvParameters)
 						case RFBPROTO_BEACONPOSITIONTRACKER:
 							//add received data to collection array
 							collectForwardData();
+							debug_printf("%i:%i\n",ntohs(g_Beacon.pos.oid) ,((g_Beacon.pos.strengthAndZ) >> 4));
 						break;
 
 						default:

@@ -162,7 +162,7 @@ void incrementStrenghtForIndex(int index, uint16_t strenth){
 	curSignal = (curSignal & 0x0000000F) << (4 * strenth);
 
 	//push the signalstrenght 0-3 away and add signals to struct
-	g_collection[index].signals = (g_collection[index].signals & (0xFFFFFFFF ^ (0x0000000F << (4 * strenth)))) | curSignal;
+	g_collection[index].signals = ((g_collection[index].signals & (0xFFFFFFFF ^ (0x0000000F << (4 * strenth)))) | curSignal);
 }
 
 /*

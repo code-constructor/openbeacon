@@ -75,7 +75,7 @@
  *
  ***************************************************************/
 
-#define CONFIG_DEFAULT_CHANNEL 81
+#define CONFIG_DEFAULT_CHANNEL 77
 
 #define CONFIG_HIRES_LOCATION
 

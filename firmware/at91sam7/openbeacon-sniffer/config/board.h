@@ -58,7 +58,7 @@
 /* nRF declaration               */
 /*-------------------------------*/
 
-#define DEFAULT_CHANNEL 77
+#define DEFAULT_CHANNEL 81
 
 #define CSN_PIN		(1L<<11)
 #define MISO_PIN	(1L<<12)

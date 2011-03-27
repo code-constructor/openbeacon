@@ -218,6 +218,9 @@ void nRF_tx(uint8_t power)
 	/* set TX power */
 	nRFAPI_SetTxPower(power & 0x3);
 
+	/* set TX Channel */
+	nRFAPI_SetChannel(CONFIG_DEFAULT_CHANNEL);
+
 	/* upload data to nRF24L01 */
 	nRFAPI_TX(g_Beacon.byte, sizeof(g_Beacon));
 
@@ -226,6 +229,9 @@ void nRF_tx(uint8_t power)
 
 	/* wait until packet is transmitted */
 	vTaskDelay(2 / portTICK_RATE_MS);
+
+	/* set RX Channel back to default */
+	nRFAPI_SetChannel(CONFIG_LOCATION_CHANNEL);
 
 	/* switch to RX mode again */
 	nRFAPI_SetRxMode(1);
@@ -249,7 +255,7 @@ void nRF_Task(void *pvParameters)
 
 	/* Initialize OpenBeacon nRF24L01 interface */
 	//first number equal frequence
-	if (!nRFAPI_Init(77, broadcast_mac, sizeof(broadcast_mac), 0))
+	if (!nRFAPI_Init(CONFIG_LOCATION_CHANNEL, broadcast_mac, sizeof(broadcast_mac), 0))
 		/* bail out if can't initialize */
 		for (;;)
 		{

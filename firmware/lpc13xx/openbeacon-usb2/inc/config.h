@@ -42,6 +42,10 @@
 #define TASK_NRF_STACK_SIZE 256
 #define TASK_NRF_PRIORITY (tskIDLE_PRIORITY + 2)
 
+/* RF Chip Settings */
+#define CONFIG_DEFAULT_CHANNEL 81
+#define CONFIG_LOCATION_CHANNEL 77
+
 #define UPDATE_INTERVAL_MS 1000
 
 #endif/*__CONFIG_H__*/

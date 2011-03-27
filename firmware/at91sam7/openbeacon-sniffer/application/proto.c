@@ -133,57 +133,55 @@ DumpStringToUSB (char *text)
       vUSBSendByte (data);
 }
 
-void
-vnRFtaskRx (void *parameter)
+void vnRFtaskRx(void *parameter)
 {
-  (void) parameter;
+	(void) parameter;
 
-  if (!PtInitNRF ())
-    return;
+	if (!PtInitNRF())
+		return;
 
-  for (;;)
-    {
-      if (nRFCMD_WaitRx (10))
+	for (;;)
 	{
-	  vLedSetRed (1);
+		if (nRFCMD_WaitRx(10))
+		{
+			do
+			{
+				memset(&g_Beacon, 0, sizeof(g_Beacon));
 
-	  do
-	    {
-	      // read packet from nRF chip
-	      nRFCMD_RegReadBuf (RD_RX_PLOAD, g_Beacon.datab,
-				 sizeof (g_Beacon));
+				// read packet from nRF chip
+				nRFCMD_RegReadBuf(RD_RX_PLOAD, g_Beacon.datab, sizeof(g_Beacon));
 
-	      // adjust byte order and decode
-	      shuffle_tx_byteorder ();
-	      xxtea_decode ();
-	      shuffle_tx_byteorder ();
+				// adjust byte order and decode
+				shuffle_tx_byteorder();
+				xxtea_decode();
+				shuffle_tx_byteorder();
 
-	      //select protocol
-	      switch(g_Beacon.pos.hdr.proto){
-	      	  case RFBPROTO_BEACONPOSITIONTRACKER:
-	      		showInformationFromPosTracker();
-	      		break;
-	      	  case RFBPROTO_BEACONTRACKER:
-	      		//showInformationFromTracker();
-	      		break;
-	      	  case RFBPROTO_BEACONCOLLECTEDFORWARDER:
-	      		showInformationFromForwarder();
-	      		break;
-	      	  default:
-	      		DumpStringToUSB ("cant read Protocol : ");
-	      		DumpUIntToUSB (g_Beacon.pos.hdr.proto);
-	      		DumpStringToUSB ("\n\r ");
-	      		break;
-	      }
+				//select protocol
+				switch (g_Beacon.pos.hdr.proto)
+				{
+				case RFBPROTO_BEACONPOSITIONTRACKER:
+					showInformationFromPosTracker();
+					break;
+				case RFBPROTO_BEACONTRACKER:
+					//showInformationFromTracker();
+					break;
+				case RFBPROTO_BEACONCOLLECTEDFORWARDER:
+					showInformationFromForwarder();
+					break;
+				default:
+					DumpStringToUSB("cant read Protocol : ");
+					DumpUIntToUSB(g_Beacon.pos.hdr.proto);
+					DumpStringToUSB("\n\r ");
+					break;
+				}
 
-	    }
-	  while ((nRFAPI_GetFifoStatus () & FIFO_RX_EMPTY) == 0);
+			} while ((nRFAPI_GetFifoStatus() & FIFO_RX_EMPTY) == 0);
 
-	  vLedSetRed (0);
-	  nRFAPI_GetFifoStatus ();
+			vLedSetRed(0);
+			nRFAPI_GetFifoStatus();
+		}
+		nRFAPI_ClearIRQ(MASK_IRQ_FLAGS);
 	}
-      nRFAPI_ClearIRQ (MASK_IRQ_FLAGS);
-    }
 }
 
 /**

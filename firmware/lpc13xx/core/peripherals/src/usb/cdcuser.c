@@ -16,113 +16,25 @@
  * Copyright (c) 2009 Keil - An ARM Company. All rights reserved.
  *---------------------------------------------------------------------------*/
 
-#include <stdint.h>
+#include <openbeacon.h>
+#ifdef  ENALBLE_USB_FULLFEATURED
 
-#include "config.h"
 #include "cdcusb.h"
 #include "usbhw.h"
 #include "usbcfg.h"
 #include "usbcore.h"
 #include "cdc.h"
 #include "cdcuser.h"
-#include "uart.h"
-
-
-unsigned char BulkBufIn[USB_CDC_BUFSIZE];	// Buffer to store USB IN  packet
-unsigned char BulkBufOut[USB_CDC_BUFSIZE];	// Buffer to store USB OUT packet
-unsigned char NotificationBuf[10];
 
 CDC_LINE_CODING CDC_LineCoding = { 115200, 0, 0, 8 };
 
 unsigned short CDC_SerialState = 0x0000;
-unsigned short CDC_DepInEmpty = 1;	// Data IN EP is empty
+BOOL CDC_DepInEmpty;	// Data IN EP is empty
 
-/*----------------------------------------------------------------------------
-  We need a buffer for incomming data on USB port because USB receives
-  much faster than  UART transmits
- *---------------------------------------------------------------------------*/
-/* Buffer masks */
-#define CDC_BUF_SIZE               (64)	// Output buffer in bytes (power 2)
-						       // large enough for file transfer
-#define CDC_BUF_MASK               (CDC_BUF_SIZE-1ul)
-
-/* Buffer read / write macros */
-#define CDC_BUF_RESET(cdcBuf)      (cdcBuf.rdIdx = cdcBuf.wrIdx = 0)
-#define CDC_BUF_WR(cdcBuf, dataIn) (cdcBuf.data[CDC_BUF_MASK & cdcBuf.wrIdx++] = (dataIn))
-#define CDC_BUF_RD(cdcBuf)         (cdcBuf.data[CDC_BUF_MASK & cdcBuf.rdIdx++])
-#define CDC_BUF_EMPTY(cdcBuf)      (cdcBuf.rdIdx == cdcBuf.wrIdx)
-#define CDC_BUF_FULL(cdcBuf)       (cdcBuf.rdIdx == cdcBuf.wrIdx+1)
-#define CDC_BUF_COUNT(cdcBuf)      (CDC_BUF_MASK & (cdcBuf.wrIdx - cdcBuf.rdIdx))
-
-
-// CDC output buffer
-typedef struct __CDC_BUF_T
-{
-  unsigned char data[CDC_BUF_SIZE];
-  unsigned int wrIdx;
-  unsigned int rdIdx;
-} CDC_BUF_T;
-
-CDC_BUF_T CDC_OutBuf;		// buffer for all CDC Out data
-
-/*----------------------------------------------------------------------------
-  read data from CDC_OutBuf
- *---------------------------------------------------------------------------*/
-int
-CDC_RdOutBuf (char *buffer, const int *length)
-{
-  int bytesToRead, bytesRead;
-
-  /* Read *length bytes, block if *bytes are not avaialable     */
-  bytesToRead = *length;
-  bytesToRead = (bytesToRead < (*length)) ? bytesToRead : (*length);
-  bytesRead = bytesToRead;
-
-
-  // ... add code to check for underrun
-
-  while (bytesToRead--)
-    {
-      *buffer++ = CDC_BUF_RD (CDC_OutBuf);
-    }
-  return (bytesRead);
-}
-
-/*----------------------------------------------------------------------------
-  write data to CDC_OutBuf
- *---------------------------------------------------------------------------*/
-int
-CDC_WrOutBuf (const char *buffer, int *length)
-{
-  int bytesToWrite, bytesWritten;
-
-  // Write *length bytes
-  bytesToWrite = *length;
-  bytesWritten = bytesToWrite;
-
-  // ... add code to check for overwrite
-  while (bytesToWrite)
-    {
-      CDC_BUF_WR (CDC_OutBuf, *buffer++);	// Copy Data to buffer  
-      bytesToWrite--;
-    }
-
-  return (bytesWritten);
-}
-
-/*----------------------------------------------------------------------------
-  check if character(s) are available at CDC_OutBuf
- *---------------------------------------------------------------------------*/
-int
-CDC_OutBufAvailChar (int *availChar)
-{
-  *availChar = CDC_BUF_COUNT (CDC_OutBuf);
-
-  return (0);
-}
-
-/* end Buffer handling */
-
+#ifdef  ENABLE_FREERTOS
+static xQueueHandle g_QueueRxUSB = NULL;
+static xQueueHandle g_QueueTxUSB = NULL;
+#endif/*ENABLE_FREERTOS*/
 
 /*----------------------------------------------------------------------------
   CDC Initialisation
@@ -133,10 +45,15 @@ CDC_OutBufAvailChar (int *availChar)
 void
 CDC_Init (void)
 {
-  CDC_DepInEmpty = 1;
+  USBIOClkConfig();
+
   CDC_SerialState = CDC_GetSerialState ();
 
-  CDC_BUF_RESET (CDC_OutBuf);
+#ifdef  ENABLE_FREERTOS
+  /* Create the queues used to hold Rx and Tx characters. */
+  g_QueueRxUSB = xQueueCreate (USB_CDC_QUEUE_SIZE, sizeof (uint8_t));
+  g_QueueTxUSB = xQueueCreate (USB_CDC_QUEUE_SIZE, sizeof (uint8_t));
+#endif/*ENABLE_FREERTOS*/
 }
 
 
@@ -286,46 +203,97 @@ CDC_SendBreak (unsigned short wDurationOfBreak)
 }
 
 
+#ifdef  ENABLE_FREERTOS
 /*----------------------------------------------------------------------------
   CDC_BulkIn call on DataIn Request
   Parameters:   none
   Return Value: none
  *---------------------------------------------------------------------------*/
-void
-CDC_BulkIn (void)
+void CDC_BulkIn(void)
 {
-  // send over USB
-  if (UARTCount > 0)
-    {
-      USB_WriteEP (CDC_DEP_IN, (uint8_t *) UARTBuffer, UARTCount);
-      UARTCount = 0;
-    }
-  else
-    {
-      CDC_DepInEmpty = 1;
-    }
+	uint8_t* p;
+	uint32_t data, bs;
+	int count;
+
+	count = uxQueueMessagesWaiting(g_QueueTxUSB);
+	if(!count)
+		CDC_DepInEmpty = 1;
+	else
+	{
+		USB_WriteEP_Count (CDC_DEP_IN, count);
+		while(count>0)
+		{
+			if(count>=(int)sizeof(data))
+				bs = sizeof(data);
+			else
+			{
+				bs = count;
+				data = 0;
+			}
+
+			p = (uint8_t*) &data;
+			while(bs--)
+			{
+				xQueueReceive (g_QueueTxUSB,p++, 0);
+				count--;
+			}
+			USB_WriteEP_Block (data);
+
+		}
+		USB_WriteEP_Terminate (CDC_DEP_IN);
+	}
 }
 
+portBASE_TYPE vUSBSendByte(portCHAR cByte)
+{
+	portBASE_TYPE res;
+
+	if ((res = xQueueSend (g_QueueTxUSB, &cByte, 0))>0)
+		CDC_BulkIn();
+
+	return res;
+}
 
 /*----------------------------------------------------------------------------
   CDC_BulkOut call on DataOut Request
   Parameters:   none
   Return Value: none
  *---------------------------------------------------------------------------*/
-void
-CDC_BulkOut (void)
+void CDC_BulkOut(void)
 {
-  int numBytesRead;
+	int count, bs;
+	uint32_t data;
+	uint8_t* p;
 
-  // get data from USB into intermediate buffer
-  numBytesRead = USB_ReadEP (CDC_DEP_OUT, &BulkBufOut[0]);
-
-  // ... add code to check for overwrite
-
-  // store data in a buffer to transmit it over serial interface
-  CDC_WrOutBuf ((char *) &BulkBufOut[0], &numBytesRead);
-
+	count = USB_ReadEP_Count(CDC_DEP_OUT);
+	while (count > 0)
+	{
+		data = USB_ReadEP_Block();
+		bs = count > 4 ? 4 : count;
+		p = (uint8_t*) &data;
+		while (bs--)
+		{
+			xQueueSend (g_QueueRxUSB,p++, 0);
+			count--;
+		}
+	}
+	USB_ReadEP_Terminate(CDC_DEP_OUT);
 }
+
+portLONG vUSBRecvByte (portCHAR *cByte, portLONG size, portTickType xTicksToWait)
+{
+	portLONG res;
+
+	if (size <= 0 || !cByte || !g_QueueRxUSB)
+		return 0;
+
+	res = 0;
+	while (size-- && xQueueReceive(g_QueueRxUSB, cByte++, xTicksToWait))
+		res++;
+
+	return res;
+}
+#endif/*ENABLE_FREERTOS*/
 
 
 /*----------------------------------------------------------------------------
@@ -336,27 +304,7 @@ CDC_BulkOut (void)
 unsigned short
 CDC_GetSerialState (void)
 {
-/*  unsigned short temp;*/
-
-  CDC_SerialState = 0;
-/*  ser_LineState (&temp);
-
-  if (temp & 0x8000)
-    CDC_SerialState |= CDC_SERIAL_STATE_RX_CARRIER;
-  if (temp & 0x2000)
-    CDC_SerialState |= CDC_SERIAL_STATE_TX_CARRIER;
-  if (temp & 0x0010)
-    CDC_SerialState |= CDC_SERIAL_STATE_BREAK;
-  if (temp & 0x4000)
-    CDC_SerialState |= CDC_SERIAL_STATE_RING;
-  if (temp & 0x0008)
-    CDC_SerialState |= CDC_SERIAL_STATE_FRAMING;
-  if (temp & 0x0004)
-    CDC_SerialState |= CDC_SERIAL_STATE_PARITY;
-  if (temp & 0x0002)
-    CDC_SerialState |= CDC_SERIAL_STATE_OVERRUN;*/
-
-  return (CDC_SerialState);
+  return CDC_SerialState;
 }
 
 
@@ -366,6 +314,7 @@ CDC_GetSerialState (void)
 void
 CDC_NotificationIn (void)
 {
+  uint8_t NotificationBuf[10];
 
   NotificationBuf[0] = 0xA1;	// bmRequestType
   NotificationBuf[1] = CDC_NOTIFICATION_SERIAL_STATE;	// bNotification (SERIAL_STATE)
@@ -380,3 +329,5 @@ CDC_NotificationIn (void)
 
   USB_WriteEP (CDC_CEP_IN, &NotificationBuf[0], 10);	// send notification
 }
+
+#endif /*ENALBLE_USB_FULLFEATURED*/

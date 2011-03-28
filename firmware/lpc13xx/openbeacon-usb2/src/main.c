@@ -81,6 +81,7 @@ static void show_version(void)
 	debug_printf(" * Tag ID: %i\n", (uint16_t) device_uuid[3]);
 	debug_printf(" * Device UID: %08X:%08X:%08X:%08X\n", device_uuid[0],
 			device_uuid[1], device_uuid[2], device_uuid[3]);
+	debug_printf(" * free heap memory: %i bytes\n",xPortGetFreeHeapSize());
 }
 
 void main_menue(uint8_t cmd)
@@ -107,7 +108,7 @@ void main_menue(uint8_t cmd)
 #ifdef MENUE_ALLOW_ISP_REBOOT
 				" * P            - invoke ISP programming mode\n"
 #endif
-				" * S            - SPI status\n"
+				" * S            - show device status\n"
 				" * R            - OpenBeacon nRF24L01 register dump\n"
 				" *****************************************************\n"
 				"\n");

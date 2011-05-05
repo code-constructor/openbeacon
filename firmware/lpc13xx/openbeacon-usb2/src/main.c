@@ -73,6 +73,7 @@ SetOutReport (uint8_t * dst, uint32_t length)
 }
 #endif
 
+#ifdef  MENU_ENABLE
 static void show_version(void)
 {
 	debug_printf(" * Tag ID: %i\n", (uint16_t) device_uuid[3]);
@@ -98,7 +99,11 @@ void main_menue(uint8_t cmd)
 	case 'H':
 		debug_printf("\n"
 			" *****************************************************\n"
+#ifdef ENABLE_BLUETOOTH
 			" * OpenBeacon USB II - Bluetooth Console             *\n"
+#else /*ENABLE_BLUETOOTH*/
+			" * OpenBeacon USB II - Serial Configuration Console  *\n"
+#endif/*ENABLE_BLUETOOTH*/
 			" * (C) 2010 Milosch Meriac <meriac@openbeacon.de>    *\n"
 			" *****************************************************\n"
 			" * H,?          - this help screen\n"
@@ -141,7 +146,7 @@ void main_menue(uint8_t cmd)
 	}
 	debug_printf("\n# ");
 }
-
+#endif/*MENU_ENABLE*/
 static
 void nRF_tx(uint8_t power)
 {
@@ -231,7 +236,9 @@ void nRF_Task(void *pvParameters)
 		/* turn off after button press */
 		if (!pin_button0())
 		{
+#ifdef ENABLE_BLUETOOTH
 			bt_init(0);
+#endif/*ENABLE_BLUETOOTH*/
 			acc_init(0);
 			pin_mode_pmu(0);
 			pmu_off(0);
@@ -323,6 +330,7 @@ void nRF_Task(void *pvParameters)
 			nRF_tx(g_Beacon.pkt.p.tracker.strength);
 		}
 
+#ifdef  MENU_ENABLE
 		if (UARTCount)
 		{
 			/* blink LED1 upon Bluetooth command */
@@ -344,6 +352,7 @@ void nRF_Task(void *pvParameters)
 			/* clear UART buffer */
 			UARTCount = 0;
 		}
+#endif/*MENU_ENABLE*/
 	}
 }
 
@@ -367,8 +376,10 @@ int main(void)
 #endif
 	/* power management init */
 	pmu_init();
+#ifdef ENABLE_BLUETOOTH
 	/* Init Bluetooth */
 	bt_init(1);
+#endif/*ENABLE_BLUETOOTH*/
 	/* Init 3D acceleration sensor */
 	acc_init(1);
 	/* read device UUID */

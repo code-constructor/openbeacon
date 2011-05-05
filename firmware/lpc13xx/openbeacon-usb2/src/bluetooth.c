@@ -22,6 +22,7 @@
 */
 #include <openbeacon.h>
 #include "bluetooth.h"
+#ifdef  ENABLE_BLUETOOTH
 
 #define CPU_WAKEUP_BLT_PORT 1
 #define CPU_WAKEUP_BLT_PIN 3
@@ -85,3 +86,4 @@ bt_init (uint8_t enabled)
 	    }
       }
 }
+#endif/*ENABLE_BLUETOOTH*/

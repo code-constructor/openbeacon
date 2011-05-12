@@ -55,7 +55,7 @@ pmu_sleep (void)
 {
 }
 
-void
+static inline void
 pmu_mode (uint8_t mode)
 {
   GPIOSetValue (CPU_MODE_PMU_PORT, CPU_MODE_PMU_BIT, mode);

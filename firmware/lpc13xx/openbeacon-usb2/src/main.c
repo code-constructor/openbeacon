@@ -188,6 +188,20 @@ void nRF_tx(uint8_t power)
 		nRFCMD_Power(0);
 }
 
+
+void nrf_off (void)
+{
+	/* disable RX mode */
+	nRFCMD_CE(0);
+	vTaskDelay(5 / portTICK_RATE_MS);
+
+	/* switch to TX mode */
+	nRFAPI_SetRxMode(0);
+
+	/* powering down */
+	nRFAPI_PowerDown();
+}
+
 static
 void nRF_Task(void *pvParameters)
 {
@@ -239,6 +253,15 @@ void nRF_Task(void *pvParameters)
 			bt_init(0);
 #endif/*ENABLE_BLUETOOTH*/
 			acc_init(0);
+			nrf_off();
+
+			/* wait for releasing button */
+			pin_led(GPIO_LED0);
+			while(!pin_button0())
+			    vTaskDelay(100 / portTICK_RATE_MS);
+			pin_led(GPIO_LEDS_OFF);
+
+			/* finally power off */
 			pmu_off(0);
 		}
 

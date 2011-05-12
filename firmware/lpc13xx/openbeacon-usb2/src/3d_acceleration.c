@@ -83,12 +83,11 @@ acc_init (uint8_t enabled)
   /* PIO, PIO0_4 in standard IO functionality */
   LPC_IOCON->PIO0_4 = 1 << 8;
 
-  /* PIO, Inactive Pull, Digital Mode */
-  LPC_IOCON->PIO1_11 = (1<<7)|(2<<3);
-
   /* setup SPI chipselect pin */
   spi_init_pin (SPI_CS_ACC3D);
 
+  /* PIO, Inactive Pull, Digital Mode */
+  LPC_IOCON->PIO1_11 = (1<<7);
   /* Set ACC_INT port to input */
   GPIOSetDir (ACC_INT_PORT, ACC_INT_PIN, 0);
 

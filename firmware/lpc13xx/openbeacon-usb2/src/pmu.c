@@ -24,6 +24,9 @@
 #include "pin.h"
 #include "pmu.h"
 
+#define CPU_MODE_PMU_PORT 0
+#define CPU_MODE_PMU_BIT 5
+
 /* Watchdog oscillator control register setup */
 #define FREQSEL 1
 #define FCLKANA 500000.0
@@ -53,6 +56,12 @@ pmu_sleep (void)
 }
 
 void
+pmu_mode (uint8_t mode)
+{
+  GPIOSetValue (CPU_MODE_PMU_PORT, CPU_MODE_PMU_BIT, mode);
+}
+
+void
 pmu_off (uint32_t reason)
 {
   LPC_PMU->GPREG0 = pmu_reason_signature;
@@ -61,7 +70,7 @@ pmu_off (uint32_t reason)
   LPC_SYSCON->PDSLEEPCFG = 0xFFFFFFFF;
   SCB->SCR |= NVIC_LP_SLEEPDEEP;
   LPC_PMU->PCON = 0x2;
-  pin_mode_pmu (1);
+  pmu_mode (1);
   __WFI ();
 }
 
@@ -74,5 +83,9 @@ pmu_reason (void)
 void
 pmu_init (void)
 {
-  pin_mode_pmu (0);
+  /* Set to PMU high power mode by default */
+  LPC_IOCON->PIO0_5 = 0;
+  GPIOSetDir (CPU_MODE_PMU_PORT, CPU_MODE_PMU_BIT, 1);
+
+  pmu_mode (0);
 }

@@ -101,7 +101,7 @@ void main_menue(uint8_t cmd)
 			" *****************************************************\n"
 #ifdef ENABLE_BLUETOOTH
 			" * OpenBeacon USB II - Bluetooth Console             *\n"
-#else /*ENABLE_BLUETOOTH*/
+#else
 			" * OpenBeacon USB II - Serial Configuration Console  *\n"
 #endif/*ENABLE_BLUETOOTH*/
 			" * (C) 2010 Milosch Meriac <meriac@openbeacon.de>    *\n"
@@ -133,7 +133,6 @@ void main_menue(uint8_t cmd)
 		spi_status();
 		nRFCMD_Status();
 		acc_status();
-		//      pmu_status ();
 #if (DISK_SIZE>0)
 		storage_status();
 #endif
@@ -240,7 +239,6 @@ void nRF_Task(void *pvParameters)
 			bt_init(0);
 #endif/*ENABLE_BLUETOOTH*/
 			acc_init(0);
-			pin_mode_pmu(0);
 			pmu_off(0);
 		}
 
@@ -366,20 +364,25 @@ int main(void)
 	pin_init();
 	/* Init SPI */
 	spi_init();
+
 	/* Init Storage */
 #ifdef USB_DISK_SUPPORT
 	storage_init();
 #endif
+
 	/* Init USB HID interface */
 #if (USB_HID_IN_REPORT_SIZE>0)||(USB_HID_OUT_REPORT_SIZE>0)
 	hid_init ();
 #endif
+
 	/* power management init */
 	pmu_init();
-#ifdef ENABLE_BLUETOOTH
+
 	/* Init Bluetooth */
+#ifdef ENABLE_BLUETOOTH
 	bt_init(1);
 #endif/*ENABLE_BLUETOOTH*/
+
 	/* Init 3D acceleration sensor */
 	acc_init(1);
 	/* read device UUID */

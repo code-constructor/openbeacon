@@ -51,11 +51,12 @@ bt_init (uint8_t enabled)
   UARTInit (115200, 0);
 
   /* fake CTS for now */
+  LPC_IOCON->PIO1_5 = 0;
   GPIOSetDir (1, 5, 1);
   GPIOSetValue (1, 5, 0);
 
   /* Set CPU_WAKEUP_BLT port pin to output */
-  LPC_IOCON->ARM_SWDIO_PIO1_3 = 1;
+  LPC_IOCON->ARM_SWDIO_PIO1_3 = 0x81;
   GPIOSetDir (CPU_WAKEUP_BLT_PORT, CPU_WAKEUP_BLT_PIN, 1);
   GPIOSetValue (CPU_WAKEUP_BLT_PORT, CPU_WAKEUP_BLT_PIN, enabled ? 1 : 0);
 
@@ -65,7 +66,7 @@ bt_init (uint8_t enabled)
   GPIOSetValue (CPU_BLT_WAKEUP_PORT, CPU_BLT_WAKEUP_PIN, 0);
 
   /* Set CPU_ON-OFF_BLT port pin to output */
-  LPC_IOCON->JTAG_TMS_PIO1_0 = 1;
+  LPC_IOCON->JTAG_TMS_PIO1_0 = 0x81;
   GPIOSetDir (CPU_ON_OFF_BLT_PORT, CPU_ON_OFF_BLT_PIN, 1);
   GPIOSetValue (CPU_ON_OFF_BLT_PORT, CPU_ON_OFF_BLT_PIN, enabled ? 1 : 0);
 

@@ -64,13 +64,17 @@ pmu_mode (uint8_t mode)
 void
 pmu_off (uint32_t reason)
 {
+  pmu_mode (1);
+
+  LPC_SYSCON->PDSLEEPCFG = 0xFFFFFFFF;
+
+  /* store reason */
   LPC_PMU->GPREG0 = pmu_reason_signature;
   LPC_PMU->GPREG1 = reason;
 
-  LPC_SYSCON->PDSLEEPCFG = 0xFFFFFFFF;
+  LPC_PMU->PCON = (1<<1)|(1<<11);
   SCB->SCR |= NVIC_LP_SLEEPDEEP;
-  LPC_PMU->PCON = 0x2;
-  pmu_mode (1);
+  LPC_SYSCON->PDRUNCFG &= ~(EN_SYS|EN_ROM);
   __WFI ();
 }
 
@@ -84,6 +88,7 @@ void
 pmu_init (void)
 {
   /* Set to PMU high power mode by default */
+  LPC_PMU->PCON = 0;
   LPC_IOCON->PIO0_5 = 0;
   GPIOSetDir (CPU_MODE_PMU_PORT, CPU_MODE_PMU_BIT, 1);
 

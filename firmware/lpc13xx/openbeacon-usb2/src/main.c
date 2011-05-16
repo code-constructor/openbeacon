@@ -240,6 +240,8 @@ void nRF_Task(void *pvParameters)
 
 	LastUpdateTicks = xTaskGetTickCount();
 
+	debug_printf("Hello World!\n");
+
 	/* main loop */
 	active = 0;
 	seq = t = 0;
@@ -404,6 +406,9 @@ int main(void)
 	/* Init Bluetooth */
 #ifdef ENABLE_BLUETOOTH
 	bt_init(1);
+#else/*ENABLE_BLUETOOTH*/
+	  /* Init UART for Bluetooth module without RTS/CTS */
+	UARTInit (115200, 0);
 #endif/*ENABLE_BLUETOOTH*/
 
 	/* Init 3D acceleration sensor */

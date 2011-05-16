@@ -24,6 +24,9 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#define USB_DISK_SUPPORT
+#define MENU_ENABLE
+
 /* enable USB disk support */
 #ifdef  USB_DISK_SUPPORT
 #define USB_VENDOR_ID 0x2366

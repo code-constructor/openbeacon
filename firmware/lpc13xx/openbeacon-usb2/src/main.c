@@ -114,6 +114,10 @@ void main_menue(uint8_t cmd)
 				" * P            - invoke ISP programming mode\n"
 #endif
 				" * S            - show device status\n"
+#ifdef  SOUND_ENABLE
+                                " * T            - increase piezo beep frequency\n"
+                                " * U            - mute piezo beeper\n"
+#endif/*SOUND_ENABLE*/
 				" * R            - OpenBeacon nRF24L01 register dump\n"
 				" *****************************************************\n"
 				"\n");
@@ -143,6 +147,7 @@ void main_menue(uint8_t cmd)
 		debug_printf(" *****************************************************\n"
 			"\n");
 		break;
+#ifdef  SOUND_ENABLE
 	case 'T':
 	        snd_tone (tone++);
 	        if(tone>TONES_MAX)
@@ -151,6 +156,7 @@ void main_menue(uint8_t cmd)
         case 'U':
                 snd_tone (0);
                 break;
+#endif/*SOUND_ENABLE*/
 	default:
 		debug_printf("Unknown command '%c' - please press 'H' for help \n", cmd);
 	}

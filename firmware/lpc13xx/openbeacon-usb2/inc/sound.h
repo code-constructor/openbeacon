@@ -27,7 +27,7 @@
 #define TONES_MAX 32
 
 extern void snd_beep(double frequency);
-extern void snd_tone (uint8_t tone);
-extern void snd_init (void);
+extern void snd_tone(uint8_t tone);
+extern void snd_init(void);
 
 #endif/*__SOUND_H__*/

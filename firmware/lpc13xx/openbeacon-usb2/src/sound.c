@@ -47,30 +47,28 @@ snd_beep(double frequency)
 }
 
 static double
-snd_get_frequency_for_tone (uint8_t tone)
+snd_get_frequency_for_tone(uint8_t tone)
 {
-  static const double frequency[] = {
-    262.63, 293.66, 329.63,
-    349.23, 392.00, 440.00, 493.88
-  };
-  return frequency[tone % ARRAY_COUNT (frequency)] *
-    (1 << (tone / ARRAY_COUNT (frequency)));
+  static const double frequency[] =
+    { 262.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88 };
+  return frequency[tone % ARRAY_COUNT (frequency)] * (1 << (tone
+      / ARRAY_COUNT (frequency)));
 }
 
 void
-snd_tone (uint8_t tone)
+snd_tone(uint8_t tone)
 {
   static uint8_t lasttone = 0;
 
   if (tone != lasttone)
     {
       lasttone = tone;
-      snd_beep (tone ? snd_get_frequency_for_tone (tone - 1) : 0);
+      snd_beep(tone ? snd_get_frequency_for_tone(tone - 1) : 0);
     }
 }
 
 void
-snd_init (void)
+snd_init(void)
 {
   /* Set sound port to PIO1_1 and PIO1_2 */
   LPC_GPIO1->DIR |= 0x6;

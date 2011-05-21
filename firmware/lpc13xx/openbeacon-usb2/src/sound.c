@@ -28,7 +28,7 @@
 #define ARRAY_COUNT(x) (sizeof(x)/sizeof(x[0]))
 
 void
-snd_beep(double frequency)
+snd_beep(uint16_t frequency)
 {
   uint32_t t;
 
@@ -46,13 +46,13 @@ snd_beep(double frequency)
     }
 }
 
-static double
+static uint16_t
 snd_get_frequency_for_tone(uint8_t tone)
 {
-  static const double frequency[] =
-    { 262.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88 };
-  return frequency[tone % ARRAY_COUNT (frequency)] * (1 << (tone
-      / ARRAY_COUNT (frequency)));
+  static const uint16_t frequency[] =
+    { 26263, 29366, 32963, 34923, 39200, 44000, 49388 };
+  return (((uint32_t)frequency[tone % ARRAY_COUNT (frequency)]) * (1 << (tone
+      / ARRAY_COUNT (frequency))))/100;
 }
 
 void

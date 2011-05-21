@@ -31,6 +31,7 @@
 #include "bluetooth.h"
 #include "3d_acceleration.h"
 #include "storage.h"
+#include "sound.h"
 #include "nRF_API.h"
 #include "nRF_CMD.h"
 #include "openbeacon-proto.h"
@@ -84,6 +85,8 @@ static void show_version(void)
 
 void main_menue(uint8_t cmd)
 {
+        static int tone=0;
+
 	/* ignore non-printable characters */
 	if (cmd <= ' ')
 		return;
@@ -140,12 +143,22 @@ void main_menue(uint8_t cmd)
 		debug_printf(" *****************************************************\n"
 			"\n");
 		break;
+	case 'T':
+	        snd_tone (tone++);
+	        if(tone>TONES_MAX)
+	            tone = 1;
+	        break;
+        case 'U':
+                snd_tone (0);
+                break;
 	default:
 		debug_printf("Unknown command '%c' - please press 'H' for help \n", cmd);
 	}
 	debug_printf("\n# ");
 }
 #endif/*MENU_ENABLE*/
+
+
 static
 void nRF_tx(uint8_t power)
 {
@@ -410,6 +423,11 @@ int main(void)
 	  /* Init UART for Bluetooth module without RTS/CTS */
 	UARTInit (115200, 0);
 #endif/*ENABLE_BLUETOOTH*/
+
+#ifdef	SOUND_ENABLE
+        /* Init Speaker Output */
+	snd_init();
+#endif/*SOUND_ENABLE*/
 
 	/* Init 3D acceleration sensor */
 	acc_init(1);

@@ -25,6 +25,7 @@
 #define __CONFIG_H__
 
 #define USB_DISK_SUPPORT
+#define SOUND_ENABLE
 #define MENU_ENABLE
 
 /* enable USB disk support */

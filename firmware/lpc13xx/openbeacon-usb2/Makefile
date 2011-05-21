@@ -15,6 +15,7 @@ APP_SRC= \
   src/pin.c \
   src/pmu.c \
   src/3d_acceleration.c \
+  src/sound.c \
   src/storage.c
 
 APP_SRC+=$(IMAGES_C)

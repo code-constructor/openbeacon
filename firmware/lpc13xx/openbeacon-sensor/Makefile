@@ -9,6 +9,7 @@ APP_LDFLAGS=-lm
 
 APP_SRC= \
   src/main.c \
+  src/pmu.c \
   src/sound.c \
   src/nRF_CMD.c \
   src/nRF_API.c \

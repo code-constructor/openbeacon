@@ -22,6 +22,7 @@
  */
 #include <openbeacon.h>
 #include "3d_acceleration.h"
+#include "pmu.h"
 #include "iap.h"
 #include "spi.h"
 #include "nRF_API.h"
@@ -39,6 +40,9 @@ uint32_t g_sysahbclkctrl;
 static uint16_t tag_id;
 static TDeviceUID device_uuid;
 
+/* set nRF24L01 broadcast mac */
+static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
+
 #if 0
 /* OpenBeacon packet */
 static TBeaconEnvelope g_Beacon;
@@ -46,15 +50,12 @@ static TBeaconEnvelope g_Beacon;
 /* Default TEA encryption key of the tag - MUST CHANGE ! */
 static const uint32_t xxtea_key[4] = { 0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF };
 
-/* set nRF24L01 broadcast mac */
-static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
-
 static void
 nRF_tx (uint8_t power)
 {
   /* update crc */
-  g_Beacon.pkt.crc = htons (crc16 (g_Beacon.byte, sizeof (g_Beacon)
-				   - sizeof (uint16_t)));
+  g_Beacon.pkt.crc =
+    htons (crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (uint16_t)));
   /* encrypt data */
   xxtea_encode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
 
@@ -96,8 +97,9 @@ nrf_off (void)
 {
   /* disable RX mode */
   nRFCMD_CE (0);
-//  vTaskDelay (5 / portTICK_RATE_MS);
-//FIXME
+
+  /* wait till RX is done */
+  pmu_sleep_ms (5);
 
   /* switch to TX mode */
   nRFAPI_SetRxMode (0);
@@ -106,106 +108,23 @@ nrf_off (void)
   nRFAPI_PowerDown ();
 }
 
-void
-WAKEUP_IRQHandlerPIO0_8 (void)
-{
-  /* set sytem clock divider back to full speed */
-  LPC_SYSCON->SYSAHBCLKDIV = 1;
-  /* switch to IRC oscillator */
-  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_IRC;
-  /* push clock change */
-  LPC_SYSCON->MAINCLKUEN = 0;
-  LPC_SYSCON->MAINCLKUEN = 1;
-  /* wait for clock change to be finished */
-  while (!(LPC_SYSCON->MAINCLKUEN & 1));
-  /* power down watchdog oscillator */
-  LPC_SYSCON->PDRUNCFG |= WDTOSC_PD;
-
-  /* re-trigger match output */
-  LPC_TMR16B0->EMR &= ~1;
-  /* reset wakeup logic */
-  LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
-  /* disable deep sleep */
-  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-  /* enable previous clock settings  */
-  LPC_SYSCON->SYSAHBCLKCTRL = g_sysahbclkctrl;
-
-  /* vodoo -NOP */
-  __NOP ();
-}
-
-void
-pmu_init (void)
-{
-  /* set sytem clock divider to full speed */
-  LPC_SYSCON->SYSAHBCLKDIV = 1;
-  /* reset 16B0 timer */
-  LPC_TMR16B0->TCR = 2;
-  /* Turn on the watchdog oscillator */
-  LPC_SYSCON->WDTOSCCTRL = 0x3F;
-  /* enable IRQ routine for PIO0_8 */
-  NVIC_EnableIRQ (WAKEUP_PIO0_8_IRQn);
-  /* initialize start logic for PIO0_8 */
-  LPC_SYSCON->STARTAPRP0 |= STARTxPRP0_PIO0_8;
-  LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
-  LPC_SYSCON->STARTERP0 |= STARTxPRP0_PIO0_8;
-}
-
-void
-pmu_sleep_ms (uint16_t ms)
-{
-  /* Turn off all other peripheral dividers FIXME save settings */
-  LPC_SYSCON->SSPCLKDIV = 0;
-  LPC_SYSCON->USBCLKDIV = 0;
-  LPC_SYSCON->WDTCLKDIV = 0;
-  LPC_SYSCON->SYSTICKCLKDIV = 0;
-
-  g_sysahbclkctrl = LPC_SYSCON->SYSAHBCLKCTRL;
-  LPC_SYSCON->SYSAHBCLKCTRL =
-    EN_RAM | EN_GPIO | EN_CT16B0 | EN_FLASHARRAY | EN_IOCON;
-
-  /* prepare 16B0 timer */
-  LPC_TMR16B0->TCR = 2;
-  LPC_TMR16B0->EMR = 2 << 4;
-  LPC_TMR16B0->MR0 = ms;
-  /* enable IRQ, reset and timer stop in MR0 match */
-  LPC_TMR16B0->MCR = 7;
-
-  /* prepare sleep */
-  LPC_PMU->PCON = (1 << 11) | (1 << 8);
-  SCB->SCR = SCB_SCR_SLEEPDEEP_Msk;
-
-  /* power up watchdog */
-  LPC_SYSCON->PDRUNCFG &= ~WDTOSC_PD;
-  /* save current power settings, power WDT on wake */
-  LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
-  /* power watchdog oscillator in deep sleep mode */
-  LPC_SYSCON->PDSLEEPCFG = (~WDTOSC_PD) & 0xFFF;
-  /* switch MAINCLKSEL to Watchdog Oscillator */
-  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_WDT;
-  /* push clock change */
-  LPC_SYSCON->MAINCLKUEN = 0;
-  LPC_SYSCON->MAINCLKUEN = 1;
-  /* set clock divider to roughly 1kHz */
-  LPC_SYSCON->SYSAHBCLKDIV = 9;
-  /* wait for clock change to be executed */
-  while (!(LPC_SYSCON->MAINCLKUEN & 1));
-
-  /* start timer */
-  LPC_TMR16B0->TCR = 1;
-  /* sleep */
-  __WFI ();
-}
-
 int
 main (void)
 {
   volatile int i;
+  int x, y, z, ox, oy, oz, firstrun, tamper;
+
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
 
   /* Initialize GPIO (sets up clock) */
   GPIOInit ();
+
+  /* initialize power management */
+  pmu_init ();
+
+  /* NVIC is installed inside UARTInit file. */
+  UARTInit (115200, 0);
 
   LPC_IOCON->PIO2_0 = 0;
   GPIOSetDir (2, 0, 1);		//OUT
@@ -248,9 +167,8 @@ main (void)
   GPIOSetDir (0, 7, 1);		//OUT
   GPIOSetValue (0, 7, 0);
 
-  LPC_IOCON->PIO1_7 = 0;
-  GPIOSetDir (1, 7, 1);		//OUT
-  GPIOSetValue (1, 7, 0);
+  /* select UART_TXD */
+  LPC_IOCON->PIO1_7 = 1;
 
   LPC_IOCON->PIO1_6 = 0;
   GPIOSetDir (1, 6, 1);		//OUT
@@ -262,7 +180,7 @@ main (void)
 
   LPC_IOCON->PIO3_2 = 0;	// FIXME
   GPIOSetDir (3, 2, 1);		//OUT
-  GPIOSetValue (3, 2, 0);
+  GPIOSetValue (3, 2, 1);
 
   LPC_IOCON->PIO1_11 = 0x80;	//FIXME
   GPIOSetDir (1, 11, 1);	// OUT
@@ -295,7 +213,7 @@ main (void)
   GPIOSetDir (1, 10, 1);	// OUT
   GPIOSetValue (1, 10, 1);
 
-  LPC_IOCON->JTAG_TCK_PIO0_10 = 0x80;
+  LPC_IOCON->JTAG_TCK_PIO0_10 = 0x81;
   GPIOSetDir (0, 10, 1);	// OUT
   GPIOSetValue (0, 10, 0);
 
@@ -303,12 +221,11 @@ main (void)
   GPIOSetDir (0, 9, 1);		// OUT
   GPIOSetValue (0, 9, 0);
 
-  /* select CT16B0_MAT0 for PIO0_8 */
-  LPC_IOCON->PIO0_8 = 2;
-  GPIOSetDir (0, 8, 0);		// IN
+  /* select MISO function for PIO0_8 */
+  LPC_IOCON->PIO0_8 = 1;
 
   /* initialize SPI */
-//  spi_init ();
+  spi_init ();
 
 #ifdef	SOUND_ENABLE
   /* Init Speaker Output */
@@ -316,20 +233,66 @@ main (void)
 #endif /*SOUND_ENABLE */
 
   /* Init 3D acceleration sensor */
-//  acc_init (0);
+  acc_init (0);
 
   /* read device UUID */
   bzero (&device_uuid, sizeof (device_uuid));
   iap_read_uid (&device_uuid);
   tag_id = crc16 ((uint8_t *) & device_uuid, sizeof (device_uuid));
 
-  pmu_init ();
+
+  /* Initialize OpenBeacon nRF24L01 interface */
+  if (!nRFAPI_Init (81, broadcast_mac, sizeof (broadcast_mac), 0))
+    for (;;)
+      {
+	GPIOSetValue (1, 3, 1);
+	pmu_sleep_ms (100);
+	GPIOSetValue (1, 3, 0);
+	pmu_sleep_ms (400);
+      }
+
+  debug_printf ("\nHello World!\n");
+  nRFCMD_RegisterDump ();
+
+  firstrun = ox = oy = oz = tamper = 0;
   while (1)
     {
-      GPIOSetValue (1, 3, 1);
-      pmu_sleep_ms (100);
-      GPIOSetValue (1, 3, 0);
-      pmu_sleep_ms (4900);
+      pmu_sleep_ms (20);
+	  GPIOSetValue (1, 3, 1);
+      pmu_sleep_ms (20);
+	  GPIOSetValue (1, 3, 0);
+    }
+  while (1)
+    {
+      /* read acceleration sensor */
+      acc_init (1);
+      pmu_sleep_ms (1);
+      acc_xyz_read (&x, &y, &z);
+      acc_init (0);
+
+      if (!firstrun)
+	firstrun = 1;
+      else
+	if ((abs (x - ox) >= ACC_TRESHOLD) ||
+	    (abs (y - oy) >= ACC_TRESHOLD) ||
+	    (abs (z - oz) >= ACC_TRESHOLD))
+	{
+	  tamper+=5;
+	  GPIOSetValue (1, 3, 1);
+	  debug_printf ("\nTAMPER: (count =%02i) X=%04i Y=%04i Z=%04i\n",
+			tamper, x - ox, y - oy, z - oz);
+	  GPIOSetValue (1, 3, 0);
+	  pmu_sleep_ms (1000);
+	}
+      else
+	{
+	  tamper = 0;
+	  pmu_sleep_ms (4900);
+	}
+
+      ox = x;
+      oy = y;
+      oz = z;
     }
 
   return 0;

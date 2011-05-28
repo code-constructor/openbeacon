@@ -25,6 +25,7 @@
 
  */
 #include <openbeacon.h>
+#include "pmu.h"
 #include "nRF_API.h"
 #include "nRF_HW.h"
 #include "nRF_CMD.h"
@@ -198,7 +199,7 @@ nRFCMD_Shutdown (void)
   nRFCMD_CE (0);
 
   /* wait 5ms */
-//  SleepMs (5); FIXME
+  pmu_sleep_ms (5);
 
   /* switch to TX mode */
   nRFAPI_SetRxMode (0);

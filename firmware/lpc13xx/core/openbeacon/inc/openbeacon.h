@@ -2,6 +2,7 @@
 #define __OPENBEACON_H__
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <config.h>
 
 #define PACKED __attribute__((packed))

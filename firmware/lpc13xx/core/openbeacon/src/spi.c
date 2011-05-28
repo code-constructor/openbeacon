@@ -112,7 +112,7 @@ void spi_init(void)
 	LPC_SYSCON->SYSAHBCLKCTRL |= (1 << 11);
 
 	/* Enable SSP peripheral MISO, Pulldown */
-	LPC_IOCON->PIO0_8 = 0x01 | (0x01 << 3);
+	LPC_IOCON->PIO0_8 = 0x01;
 	/* MOSI */
 	LPC_IOCON->PIO0_9 = 0x01;
 	/* route to PIO0_10 */

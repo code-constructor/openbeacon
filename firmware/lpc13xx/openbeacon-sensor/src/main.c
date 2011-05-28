@@ -240,7 +240,6 @@ main (void)
   iap_read_uid (&device_uuid);
   tag_id = crc16 ((uint8_t *) & device_uuid, sizeof (device_uuid));
 
-
   /* Initialize OpenBeacon nRF24L01 interface */
   if (!nRFAPI_Init (81, broadcast_mac, sizeof (broadcast_mac), 0))
     for (;;)
@@ -257,18 +256,11 @@ main (void)
   firstrun = ox = oy = oz = tamper = 0;
   while (1)
     {
-      pmu_sleep_ms (20);
-	  GPIOSetValue (1, 3, 1);
-      pmu_sleep_ms (20);
-	  GPIOSetValue (1, 3, 0);
-    }
-  while (1)
-    {
       /* read acceleration sensor */
-      acc_init (1);
-      pmu_sleep_ms (1);
+      acc_power (1);
+      pmu_sleep_ms (20);
       acc_xyz_read (&x, &y, &z);
-      acc_init (0);
+      acc_power (0);
 
       if (!firstrun)
 	firstrun = 1;
@@ -277,22 +269,23 @@ main (void)
 	    (abs (y - oy) >= ACC_TRESHOLD) ||
 	    (abs (z - oz) >= ACC_TRESHOLD))
 	{
-	  tamper+=5;
+	  tamper=5;
 	  GPIOSetValue (1, 3, 1);
-	  debug_printf ("\nTAMPER: (count =%02i) X=%04i Y=%04i Z=%04i\n",
-			tamper, x - ox, y - oy, z - oz);
+	  debug_printf ("\nTAMPER: X=%04i Y=%04i Z=%04i\n", x, y, z);
 	  GPIOSetValue (1, 3, 0);
-	  pmu_sleep_ms (1000);
 	}
-      else
-	{
-	  tamper = 0;
-	  pmu_sleep_ms (4900);
-	}
-
       ox = x;
       oy = y;
       oz = z;
+
+      GPIOSetValue (1, 3, 0);
+      if(tamper)
+      {
+	tamper--;
+	pmu_sleep_ms (1000);
+      }
+      else
+	pmu_sleep_ms (5000);
     }
 
   return 0;

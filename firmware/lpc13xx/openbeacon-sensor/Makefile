@@ -1,6 +1,6 @@
 TARGET=openbeacon-sensor
 ARCH=LPC13
-CPU=$(ARCH)43
+CPU=$(ARCH)42
 DEBUG=-g
 OPTIM=-Os -mword-relocations
 

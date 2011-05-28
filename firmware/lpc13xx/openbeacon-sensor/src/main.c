@@ -28,6 +28,12 @@
 #include "nRF_CMD.h"
 #include "openbeacon-proto.h"
 
+uint32_t g_sysahbclkctrl;
+
+#define MAINCLKSEL_IRC 0
+#define MAINCLKSEL_SYSPLL_IN 1
+#define MAINCLKSEL_WDT 2
+#define MAINCLKSEL_SYSPLL_OUT 3
 
 /* device UUID */
 static uint16_t tag_id;
@@ -103,10 +109,92 @@ nrf_off (void)
 void
 WAKEUP_IRQHandlerPIO0_8 (void)
 {
+  /* set sytem clock divider back to full speed */
+  LPC_SYSCON->SYSAHBCLKDIV = 1;
+  /* switch to IRC oscillator */
+  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_IRC;
+  /* push clock change */
+  LPC_SYSCON->MAINCLKUEN = 0;
+  LPC_SYSCON->MAINCLKUEN = 1;
+  /* wait for clock change to be finished */
+  while (!(LPC_SYSCON->MAINCLKUEN & 1));
+  /* power down watchdog oscillator */
+  LPC_SYSCON->PDRUNCFG |= WDTOSC_PD;
+
+  /* re-trigger match output */
   LPC_TMR16B0->EMR &= ~1;
+  /* reset wakeup logic */
   LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
+  /* disable deep sleep */
   SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+  /* enable previous clock settings  */
+  LPC_SYSCON->SYSAHBCLKCTRL = g_sysahbclkctrl;
+
+  /* vodoo -NOP */
   __NOP ();
+}
+
+void
+pmu_init (void)
+{
+  /* set sytem clock divider to full speed */
+  LPC_SYSCON->SYSAHBCLKDIV = 1;
+  /* reset 16B0 timer */
+  LPC_TMR16B0->TCR = 2;
+  /* Turn on the watchdog oscillator */
+  LPC_SYSCON->WDTOSCCTRL = 0x3F;
+  /* enable IRQ routine for PIO0_8 */
+  NVIC_EnableIRQ (WAKEUP_PIO0_8_IRQn);
+  /* initialize start logic for PIO0_8 */
+  LPC_SYSCON->STARTAPRP0 |= STARTxPRP0_PIO0_8;
+  LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
+  LPC_SYSCON->STARTERP0 |= STARTxPRP0_PIO0_8;
+}
+
+void
+pmu_sleep_ms (uint16_t ms)
+{
+  /* Turn off all other peripheral dividers FIXME save settings */
+  LPC_SYSCON->SSPCLKDIV = 0;
+  LPC_SYSCON->USBCLKDIV = 0;
+  LPC_SYSCON->WDTCLKDIV = 0;
+  LPC_SYSCON->SYSTICKCLKDIV = 0;
+
+  g_sysahbclkctrl = LPC_SYSCON->SYSAHBCLKCTRL;
+  LPC_SYSCON->SYSAHBCLKCTRL =
+    EN_RAM | EN_GPIO | EN_CT16B0 | EN_FLASHARRAY | EN_IOCON;
+
+  /* prepare 16B0 timer */
+  LPC_TMR16B0->TCR = 2;
+  LPC_TMR16B0->EMR = 2 << 4;
+  LPC_TMR16B0->MR0 = ms;
+  /* enable IRQ, reset and timer stop in MR0 match */
+  LPC_TMR16B0->MCR = 7;
+
+  /* prepare sleep */
+  LPC_PMU->PCON = (1 << 11) | (1 << 8);
+  SCB->SCR = SCB_SCR_SLEEPDEEP_Msk;
+
+  /* power up watchdog */
+  LPC_SYSCON->PDRUNCFG &= ~WDTOSC_PD;
+  /* save current power settings, power WDT on wake */
+  LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
+  /* power watchdog oscillator in deep sleep mode */
+  LPC_SYSCON->PDSLEEPCFG = (~WDTOSC_PD) & 0xFFF;
+  /* switch MAINCLKSEL to Watchdog Oscillator */
+  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_WDT;
+  /* push clock change */
+  LPC_SYSCON->MAINCLKUEN = 0;
+  LPC_SYSCON->MAINCLKUEN = 1;
+  /* set clock divider to roughly 1kHz */
+  LPC_SYSCON->SYSAHBCLKDIV = 9;
+  /* wait for clock change to be executed */
+  while (!(LPC_SYSCON->MAINCLKUEN & 1));
+
+  /* start timer */
+  LPC_TMR16B0->TCR = 1;
+  /* sleep */
+  __WFI ();
 }
 
 int
@@ -235,57 +323,13 @@ main (void)
   iap_read_uid (&device_uuid);
   tag_id = crc16 ((uint8_t *) & device_uuid, sizeof (device_uuid));
 
-  LPC_SYSCON->SYSAHBCLKDIV = 1;
-  /* Turn off all other peripheral dividers */
-  LPC_SYSCON->SSPCLKDIV = 0;
-  LPC_SYSCON->USBCLKDIV = 0;
-  LPC_SYSCON->WDTCLKDIV = 0;
-  LPC_SYSCON->SYSTICKCLKDIV = 0;
-
-  /* Turn on the watchdog oscillator */
-  LPC_SYSCON->WDTOSCCTRL = 0x3F;
-
-  /* disable all the stuff not needed */
-  LPC_SYSCON->SYSAHBCLKCTRL |= EN_CT16B0;
-
-  /* prepare 16B0 timer */
-  LPC_TMR16B0->TCR = 2;
-  LPC_TMR16B0->PR = 7;
-  LPC_TMR16B0->MR0 = 5000;
-  LPC_TMR16B0->MCR = 7;
-  LPC_TMR16B0->EMR = 2 << 4;
-
-  NVIC_EnableIRQ (WAKEUP_PIO0_8_IRQn);
-  LPC_SYSCON->STARTAPRP0 |= STARTxPRP0_PIO0_8;
-  LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
-  LPC_SYSCON->STARTERP0 |= STARTxPRP0_PIO0_8;
-
-  /* Switch MAINCLKSEL to Watchdog Oscillator */
-  LPC_SYSCON->PDRUNCFG &= ~WDTOSC_PD;
-  LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
-  LPC_SYSCON->PDSLEEPCFG = (~WDTOSC_PD) & 0xFFF;
-  LPC_SYSCON->SYSAHBCLKCTRL =
-    EN_RAM | EN_GPIO | EN_CT16B0 | EN_FLASHARRAY | EN_IOCON;
-
-  LPC_SYSCON->MAINCLKUEN = 0;
-  LPC_SYSCON->MAINCLKSEL = 2;
-  LPC_SYSCON->MAINCLKUEN = 1;
-  while (!(LPC_SYSCON->MAINCLKUEN & 1));
-  LPC_SYSCON->PDRUNCFG = ~(WDTOSC_PD | FLASH_PD | RESERVED1_PD);
-
+  pmu_init ();
   while (1)
     {
       GPIOSetValue (1, 3, 1);
-      for (i = 0; i < 10; i++);
+      pmu_sleep_ms (100);
       GPIOSetValue (1, 3, 0);
-
-      LPC_PMU->PCON = (1 << 11) | (1 << 8);
-
-      /* start timer */
-      LPC_TMR16B0->TCR = 1;
-      SCB->SCR = SCB_SCR_SLEEPDEEP_Msk;
-      __WFI ();
-      __NOP ();
+      pmu_sleep_ms (4900);
     }
 
   return 0;

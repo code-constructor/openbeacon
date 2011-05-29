@@ -31,11 +31,6 @@
 
 uint32_t g_sysahbclkctrl;
 
-#define FIFO_DEPTH 10
-typedef struct {
-    int x,y,z;
-} TFifoEntry;
-
 #define MAINCLKSEL_IRC 0
 #define MAINCLKSEL_SYSPLL_IN 1
 #define MAINCLKSEL_WDT 2
@@ -47,42 +42,6 @@ static TDeviceUID device_uuid;
 
 /* set nRF24L01 broadcast mac */
 static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
-
-/* OpenBeacon packet */
-static char g_Beacon[16];
-
-static void
-nRF_tx (uint8_t power)
-{
-  /* set TX power */
-  nRFAPI_SetTxPower (power & 0x3);
-
-  /* upload data to nRF24L01 */
-  nRFAPI_TX ((uint8_t*)&g_Beacon, sizeof(g_Beacon));
-
-  /* transmit data */
-  nRFCMD_CE (1);
-
-  /* wait for packet to be transmitted */
-  pmu_sleep_ms (10);
-
-  /* transmit data */
-  nRFCMD_CE (0);
-}
-
-void
-nrf_off (void)
-{
-  /* disable RX mode */
-  nRFCMD_CE (0);
-
-  /* wait till RX is done */
-  pmu_sleep_ms (5);
-
-  /* switch to TX mode */
-  nRFAPI_SetRxMode (0);
-
-}
 
 void
 int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
@@ -105,15 +64,7 @@ int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
 int
 main (void)
 {
-  /* accelerometer readings fifo */
-  TFifoEntry acc_lowpass;
-  TFifoEntry fifo_buf[FIFO_DEPTH];
-  int fifo_pos;
-  TFifoEntry *fifo;
-
   volatile int i;
-  int x, y, z, firstrun, tamper, moving;
-
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
 
@@ -252,111 +203,46 @@ main (void)
   /* set tx power power to high */
   nRFCMD_Power (1);
 
+  /* test */
+  nRFAPI_PowerDown ();
+
   /* blink LED for 1s to show readyness */
   GPIOSetValue (1, 3, 1);
   pmu_sleep_ms (1000);
   GPIOSetValue (1, 3, 0);
 
-  /* reset fifo */
-  fifo_pos=0;
-  bzero(&fifo_buf,sizeof(fifo_buf));
-  bzero(&acc_lowpass,sizeof(acc_lowpass));
+  /* switch MAINCLKSEL to system PLL input */
+  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_SYSPLL_IN;
+  /* push clock change */
+  LPC_SYSCON->MAINCLKUEN = 0;
+  LPC_SYSCON->MAINCLKUEN = 1;
+  while (!(LPC_SYSCON->MAINCLKUEN & 1));
 
-  firstrun = tamper = moving = 0;
+  LPC_SYSCON->SSPCLKDIV = 0;
+  LPC_SYSCON->UARTCLKDIV = 0;
+  LPC_SYSCON->USBCLKDIV = 0;
+  LPC_SYSCON->WDTCLKDIV = 0;
+  LPC_SYSCON->CLKOUTDIV = 0;
+  LPC_SYSCON->SYSTICKCLKDIV = 0;
+
+  /* set system clock to 2MHz */
+  LPC_SYSCON->SYSAHBCLKDIV = 6;
+  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM | EN_GPIO | EN_FLASHARRAY | EN_IOCON;
+
+  /* disable unused stuff */
+  LPC_SYSCON->PDRUNCFG |= (IRCOUT_PD|IRC_PD|ADC_PD|WDTOSC_PD|SYSPLL_PD|USBPLL_PD|USBPAD_PD);
+  /* save current power settings, power WDT on wake */
+  LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
+   /* power sysem oscillator & BOD in deep sleep mode */
+  LPC_SYSCON->PDSLEEPCFG = (~(SYSOSC_PD|BOD_PD)) & 0xFFF;
+
+  LPC_PMU->PCON = (1 << 11) | (1 << 8);
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  LPC_SYSCON->SYSAHBCLKCTRL = EN_FLASHARRAY;
+  __WFI ();
+
   while (1)
     {
-      /* read acceleration sensor */
-      acc_power (1);
-      pmu_sleep_ms (20);
-      acc_xyz_read (&x, &y, &z);
-      acc_power (0);
-
-      /* add new accelerometer values to lowpass */
-      fifo = &fifo_buf[fifo_pos];
-      if(fifo_pos>=(FIFO_DEPTH-1))
-        fifo_pos=0;
-      else
-        fifo_pos++;
-
-      acc_lowpass.x += x - fifo->x;
-      fifo->x = x;
-      acc_lowpass.y += y - fifo->y;
-      fifo->y = y;
-      acc_lowpass.z += z - fifo->z;
-      fifo->z = z;
-
-      if (!firstrun)
-      {
-        if(fifo_pos)
-        {
-	    pmu_sleep_ms (500);
-	    continue;
-	}
-	else
-	{
-	    /* confirm finalized initialization by double-blink */
-	    firstrun = 1;
-	    GPIOSetValue (1, 3, 1);
-	    pmu_sleep_ms (100);
-	    GPIOSetValue (1, 3, 0);
-	    pmu_sleep_ms (300);
-	    GPIOSetValue (1, 3, 1);
-	    pmu_sleep_ms (100);
-	    GPIOSetValue (1, 3, 0);
-	}
-      }
-      else
-	if ((abs (acc_lowpass.x/FIFO_DEPTH - x) >= ACC_TRESHOLD) ||
-	    (abs (acc_lowpass.y/FIFO_DEPTH - y) >= ACC_TRESHOLD) ||
-	    (abs (acc_lowpass.z/FIFO_DEPTH - z) >= ACC_TRESHOLD))
-	tamper = 5;
-
-      if (tamper)
-	{
-	  pmu_sleep_ms (750);
-	  tamper--;
-	  if (moving < ACC_MOVING_TRESHOLD)
-	    moving++;
-	  else
-	    {
-	      snd_tone (22);
-	      GPIOSetValue (1, 3, 1);
-	      pmu_wait_ms (20);
-	      GPIOSetValue (1, 3, 0);
-	      snd_tone (23);
-	      pmu_wait_ms (50);
-	      snd_tone (24);
-	      pmu_wait_ms (30);
-	      snd_tone (0);
-	    }
-	}
-      else
-	{
-	  pmu_sleep_ms (5000);
-	  moving = 0;
-	}
-
-      /* power up */
-      nRFAPI_SetRxMode(0);
-      /* wait for ocillator clock to settle */
-      pmu_wait_ms (10);
-      /* prepare packet */
-      bzero (&g_Beacon, sizeof (g_Beacon));
-      g_Beacon[ 0]='T';
-      g_Beacon[ 1]='{';
-      int2str (tag_id,6,10,&g_Beacon[2]);
-      g_Beacon[ 7]=',';
-      int2str (moving,2,10,&g_Beacon[8]);
-      g_Beacon[10]=',';
-      g_Beacon[11]='P';
-      g_Beacon[12]='I';
-      g_Beacon[13]='N';
-      g_Beacon[14]='G';
-      g_Beacon[15]='}';
-      /* transmit packet */
-      nRF_tx (5);
-      /* powering down */
-      nRFAPI_PowerDown ();
     }
 
   return 0;

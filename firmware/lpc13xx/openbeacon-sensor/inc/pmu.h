@@ -24,6 +24,7 @@
 #ifndef __PMU_H__
 #define __PMU_H__
 
+extern void pmu_wait_ms (uint16_t ms);
 extern void pmu_sleep_ms (uint16_t ms);
 extern void pmu_init (void);
 

@@ -24,8 +24,16 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-/* Teshold for detecting 3D accelerometer movement */
+/* Treshold for detecting 3D accelerometer movement */
 #define ACC_TRESHOLD 3
+#define ACC_MOVING_TRESHOLD 20
+
+/* Clock Definition */
+#define SYSTEM_CRYSTAL_CLOCK 12000000
+#define SYSTEM_CORE_CLOCK (SYSTEM_CRYSTAL_CLOCK*6)
+
+/* Enable Sound Output */
+#define SOUND_ENABLE
 
 /* SPI_CS(io_port, io_pin, CPSDVSR frequency, mode) */
 #define SPI_CS_NRF   SPI_CS( 1,10, 8, SPI_CS_MODE_NORMAL  )	/*  9.0MHz */

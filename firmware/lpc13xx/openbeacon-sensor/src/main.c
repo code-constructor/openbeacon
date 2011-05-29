@@ -22,6 +22,7 @@
  */
 #include <openbeacon.h>
 #include "3d_acceleration.h"
+#include "sound.h"
 #include "pmu.h"
 #include "iap.h"
 #include "spi.h"
@@ -112,7 +113,7 @@ int
 main (void)
 {
   volatile int i;
-  int x, y, z, ox, oy, oz, firstrun, tamper;
+  int x, y, z, ox, oy, oz, firstrun, tamper, moving;
 
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
@@ -253,7 +254,12 @@ main (void)
   debug_printf ("\nHello World!\n");
   nRFCMD_RegisterDump ();
 
-  firstrun = ox = oy = oz = tamper = 0;
+  /* blink LED for 1s to show readyness */
+  GPIOSetValue (1, 3, 1);
+  pmu_sleep_ms (1000);
+  GPIOSetValue (1, 3, 0);
+
+  firstrun = ox = oy = oz = tamper = moving = 0;
   while (1)
     {
       /* read acceleration sensor */
@@ -266,26 +272,37 @@ main (void)
 	firstrun = 1;
       else
 	if ((abs (x - ox) >= ACC_TRESHOLD) ||
-	    (abs (y - oy) >= ACC_TRESHOLD) ||
-	    (abs (z - oz) >= ACC_TRESHOLD))
-	{
-	  tamper=5;
-	  GPIOSetValue (1, 3, 1);
-	  debug_printf ("\nTAMPER: X=%04i Y=%04i Z=%04i\n", x, y, z);
-	  GPIOSetValue (1, 3, 0);
-	}
+	    (abs (y - oy) >= ACC_TRESHOLD) || (abs (z - oz) >= ACC_TRESHOLD))
+	tamper = 5;
       ox = x;
       oy = y;
       oz = z;
 
-      GPIOSetValue (1, 3, 0);
-      if(tamper)
-      {
-	tamper--;
-	pmu_sleep_ms (1000);
-      }
+      if (tamper)
+	{
+	  tamper--;
+	  pmu_sleep_ms (750);
+	  if (moving < ACC_MOVING_TRESHOLD)
+	    moving++;
+	  else
+	    {
+	      snd_tone (22);
+	      GPIOSetValue (1, 3, 1);
+	      pmu_wait_ms (20);
+	      GPIOSetValue (1, 3, 0);
+	      snd_tone (23);
+	      pmu_wait_ms (50);
+	      snd_tone (24);
+	      pmu_wait_ms (30);
+	      snd_tone (0);
+	    }
+
+	}
       else
-	pmu_sleep_ms (5000);
+	{
+	  pmu_sleep_ms (5000);
+	  moving = 0;
+	}
     }
 
   return 0;

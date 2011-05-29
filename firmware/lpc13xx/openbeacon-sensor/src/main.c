@@ -28,7 +28,6 @@
 #include "spi.h"
 #include "nRF_API.h"
 #include "nRF_CMD.h"
-#include "openbeacon-proto.h"
 
 uint32_t g_sysahbclkctrl;
 
@@ -44,54 +43,28 @@ static TDeviceUID device_uuid;
 /* set nRF24L01 broadcast mac */
 static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
 
-#if 0
 /* OpenBeacon packet */
-static TBeaconEnvelope g_Beacon;
-
-/* Default TEA encryption key of the tag - MUST CHANGE ! */
-static const uint32_t xxtea_key[4] = { 0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF };
+static char g_Beacon[16];
 
 static void
 nRF_tx (uint8_t power)
 {
-  /* update crc */
-  g_Beacon.pkt.crc =
-    htons (crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (uint16_t)));
-  /* encrypt data */
-  xxtea_encode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
-
-  pin_led (GPIO_LED0);
-
-  /* update power pin */
-  nRFCMD_Power (power & 0x4);
-
-  /* disable RX mode */
-  nRFCMD_CE (0);
-  vTaskDelay (5 / portTICK_RATE_MS);
-
-  /* switch to TX mode */
-  nRFAPI_SetRxMode (0);
-
   /* set TX power */
   nRFAPI_SetTxPower (power & 0x3);
 
   /* upload data to nRF24L01 */
-  nRFAPI_TX (g_Beacon.byte, sizeof (g_Beacon));
+  nRFAPI_TX ((uint8_t*)&g_Beacon, sizeof(g_Beacon));
 
   /* transmit data */
   nRFCMD_CE (1);
 
-  delay (2000);
+  /* wait for packet to be transmitted */
+  pmu_sleep_ms (10);
 
-  /* switch to RX mode again */
-  nRFAPI_SetRxMode (1);
+  /* transmit data */
+  nRFCMD_CE (0);
 
-  pin_led (GPIO_LEDS_OFF);
-
-  if (power & 0x4)
-    nRFCMD_Power (0);
 }
-#endif
 
 void
 nrf_off (void)
@@ -105,8 +78,24 @@ nrf_off (void)
   /* switch to TX mode */
   nRFAPI_SetRxMode (0);
 
-  /* powering down */
-  nRFAPI_PowerDown ();
+}
+
+void
+int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
+{
+  uint8_t digit;
+  while(digits)
+  {
+    digit = value % base;
+    value/= base;
+
+    if(digit<=9)
+	digit+='0';
+    else
+	digit='A'+(digit-0xA);
+
+    string[--digits]=digit;
+  }
 }
 
 int
@@ -250,6 +239,8 @@ main (void)
 	GPIOSetValue (1, 3, 0);
 	pmu_sleep_ms (400);
       }
+  /* set tx power power to high */
+  nRFCMD_Power (1);
 
   debug_printf ("\nHello World!\n");
   nRFCMD_RegisterDump ();
@@ -280,8 +271,8 @@ main (void)
 
       if (tamper)
 	{
-	  tamper--;
 	  pmu_sleep_ms (750);
+	  tamper--;
 	  if (moving < ACC_MOVING_TRESHOLD)
 	    moving++;
 	  else
@@ -296,13 +287,34 @@ main (void)
 	      pmu_wait_ms (30);
 	      snd_tone (0);
 	    }
-
 	}
       else
 	{
 	  pmu_sleep_ms (5000);
 	  moving = 0;
 	}
+
+      /* power up */
+      nRFAPI_SetRxMode(0);
+      /* wait for ocillator clock to settle */
+      pmu_wait_ms (10);
+      /* prepare packet */
+      bzero (&g_Beacon, sizeof (g_Beacon));
+      g_Beacon[ 0]='T';
+      g_Beacon[ 1]='{';
+      int2str (tag_id,6,10,&g_Beacon[2]);
+      g_Beacon[ 7]=',';
+      int2str (moving,2,10,&g_Beacon[8]);
+      g_Beacon[10]=',';
+      g_Beacon[11]='P';
+      g_Beacon[12]='I';
+      g_Beacon[13]='N';
+      g_Beacon[14]='G';
+      g_Beacon[15]='}';
+      /* transmit packet */
+      nRF_tx (5);
+      /* powering down */
+      nRFAPI_PowerDown ();
     }
 
   return 0;

@@ -31,6 +31,11 @@
 
 uint32_t g_sysahbclkctrl;
 
+#define FIFO_DEPTH 10
+typedef struct {
+    int x,y,z;
+} TFifoEntry;
+
 #define MAINCLKSEL_IRC 0
 #define MAINCLKSEL_SYSPLL_IN 1
 #define MAINCLKSEL_WDT 2
@@ -100,8 +105,14 @@ int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
 int
 main (void)
 {
+  /* accelerometer readings fifo */
+  TFifoEntry acc_lowpass;
+  TFifoEntry fifo_buf[FIFO_DEPTH];
+  int fifo_pos;
+  TFifoEntry *fifo;
+
   volatile int i;
-  int x, y, z, ox, oy, oz, firstrun, tamper, moving;
+  int x, y, z, firstrun, tamper, moving;
 
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
@@ -241,15 +252,17 @@ main (void)
   /* set tx power power to high */
   nRFCMD_Power (1);
 
-  debug_printf ("\nHello World!\n");
-  nRFCMD_RegisterDump ();
-
   /* blink LED for 1s to show readyness */
   GPIOSetValue (1, 3, 1);
   pmu_sleep_ms (1000);
   GPIOSetValue (1, 3, 0);
 
-  firstrun = ox = oy = oz = tamper = moving = 0;
+  /* reset fifo */
+  fifo_pos=0;
+  bzero(&fifo_buf,sizeof(fifo_buf));
+  bzero(&acc_lowpass,sizeof(acc_lowpass));
+
+  firstrun = tamper = moving = 0;
   while (1)
     {
       /* read acceleration sensor */
@@ -258,17 +271,45 @@ main (void)
       acc_xyz_read (&x, &y, &z);
       acc_power (0);
 
-      if (!firstrun)
-	firstrun = 1;
+      /* add new accelerometer values to lowpass */
+      fifo = &fifo_buf[fifo_pos];
+      if(fifo_pos>=(FIFO_DEPTH-1))
+        fifo_pos=0;
       else
-	if ((abs (x - ox) >= ACC_TRESHOLD) ||
-	    (abs (y - oy) >= ACC_TRESHOLD) || (abs (z - oz) >= ACC_TRESHOLD))
-	tamper = 5;
+        fifo_pos++;
 
-      /* back up old XYZ readings */
-      ox = x;
-      oy = y;
-      oz = z;
+      acc_lowpass.x += x - fifo->x;
+      fifo->x = x;
+      acc_lowpass.y += y - fifo->y;
+      fifo->y = y;
+      acc_lowpass.z += z - fifo->z;
+      fifo->z = z;
+
+      if (!firstrun)
+      {
+        if(fifo_pos)
+        {
+	    pmu_sleep_ms (500);
+	    continue;
+	}
+	else
+	{
+	    /* confirm finalized initialization by double-blink */
+	    firstrun = 1;
+	    GPIOSetValue (1, 3, 1);
+	    pmu_sleep_ms (100);
+	    GPIOSetValue (1, 3, 0);
+	    pmu_sleep_ms (300);
+	    GPIOSetValue (1, 3, 1);
+	    pmu_sleep_ms (100);
+	    GPIOSetValue (1, 3, 0);
+	}
+      }
+      else
+	if ((abs (acc_lowpass.x/FIFO_DEPTH - x) >= ACC_TRESHOLD) ||
+	    (abs (acc_lowpass.y/FIFO_DEPTH - y) >= ACC_TRESHOLD) ||
+	    (abs (acc_lowpass.z/FIFO_DEPTH - z) >= ACC_TRESHOLD))
+	tamper = 5;
 
       if (tamper)
 	{

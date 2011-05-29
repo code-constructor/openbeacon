@@ -63,7 +63,6 @@ nRF_tx (uint8_t power)
 
   /* transmit data */
   nRFCMD_CE (0);
-
 }
 
 void
@@ -265,6 +264,8 @@ main (void)
 	if ((abs (x - ox) >= ACC_TRESHOLD) ||
 	    (abs (y - oy) >= ACC_TRESHOLD) || (abs (z - oz) >= ACC_TRESHOLD))
 	tamper = 5;
+
+      /* back up old XYZ readings */
       ox = x;
       oy = y;
       oz = z;

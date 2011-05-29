@@ -76,6 +76,8 @@ acc_status (void)
 void
 acc_power (uint8_t enabled)
 {
+  /* dummy read - FIXME */
+  acc_reg_read (0);
   /* set 3D acceleration sensor active, 2g - FIXME power saving */
   acc_reg_write (0x16, enabled ? (0x01 | 0x01 << 2) : 0x00);
 }
@@ -92,9 +94,6 @@ acc_init (uint8_t enabled)
   /* PIO, Inactive Pull, Digital Mode */
   LPC_IOCON->PIO1_11 = 0x80;
   GPIOSetDir (1, 11, 0);
-
-  /* dummy read - FIXME */
-  acc_reg_read (0);
 
   /* propagate power settings */  
   acc_power (enabled);

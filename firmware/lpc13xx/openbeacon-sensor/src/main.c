@@ -204,11 +204,18 @@ main (void)
   pmu_sleep_ms (1000);
   GPIOSetValue (1, 2, 0);
 
+  /* disable unused jobs */
+  LPC_SYSCON->SSPCLKDIV = 0;
+  LPC_SYSCON->UARTCLKDIV = 0;
   /* set system clock to 12MHz */
   LPC_SYSCON->SYSAHBCLKDIV = 6;
   while (1)
     {
-      pmu_sleep_ms (1900);
+      pmu_sleep_ms (1700);
+      GPIOSetValue (1, 2, 1);
+      pmu_sleep_ms (100);
+      GPIOSetValue (1, 2, 0);
+      pmu_sleep_ms (100);
       GPIOSetValue (1, 2, 1);
       pmu_sleep_ms (100);
       GPIOSetValue (1, 2, 0);

@@ -89,7 +89,7 @@ pmu_sleep_ms (uint16_t ms)
   LPC_SYSCON->PDSLEEPCFG = (~(SYSOSC_PD|BOD_PD)) & 0xFFF;
 
   /* shut down unused stuff */
-  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM|EN_FLASHARRAY|EN_CT16B0|EN_GPIO;
+  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM|EN_FLASHARRAY|EN_CT16B0;
 
   /* start timer */
   LPC_TMR16B0->TCR = 1;

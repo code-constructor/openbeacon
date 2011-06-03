@@ -272,9 +272,7 @@ main (void)
       /* powering down */
       nRFAPI_PowerDown ();
       LPC_SYSCON->SSPCLKDIV = 0x00;
-
     }
-
   return 0;
 }
 

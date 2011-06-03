@@ -105,6 +105,8 @@ void spi_status(void)
 
 void spi_init(void)
 {
+	uint32_t div;
+
 	/* reset SSP peripheral */
 	LPC_SYSCON->PRESETCTRL = 0x01;
 
@@ -121,7 +123,11 @@ void spi_init(void)
 	LPC_IOCON->JTAG_TCK_PIO0_10 = 0x02;
 
 	/* Set SSP PCLK to DIV=1 */
-	LPC_SYSCON->SSPCLKDIV = 0x01;
+	div = (LPC_SYSCON->SYSAHBCLKDIV+1)/2;
+	if(!div)
+	  div=1;
+	LPC_SYSCON->SSPCLKDIV = div;
+
 	/* 8 bit, SPI, SCR=0 */
 	LPC_SSP->CR0 = 0x0007;
 	LPC_SSP->CR1 = 0x0002;

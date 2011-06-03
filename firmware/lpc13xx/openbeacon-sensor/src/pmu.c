@@ -122,8 +122,8 @@ pmu_init (void)
   LPC_SYSCON->MAINCLKUEN = 0;
   LPC_SYSCON->MAINCLKUEN = 1;
   while (!(LPC_SYSCON->MAINCLKUEN & 1));
-  /* set system clock to 12MHz */
-  LPC_SYSCON->SYSAHBCLKDIV = 1;
+  /* set system clock to 2MHz */
+  LPC_SYSCON->SYSAHBCLKDIV = 6;
 
   /* disable unused jobs */
   LPC_SYSCON->SSPCLKDIV = 0;

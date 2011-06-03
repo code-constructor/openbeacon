@@ -207,8 +207,6 @@ main (void)
   /* disable unused jobs */
   spi_close ();
   LPC_SYSCON->UARTCLKDIV = 0;
-  /* set system clock to 12MHz */
-  LPC_SYSCON->SYSAHBCLKDIV = 6;
   while (1)
     {
       pmu_sleep_ms (1700);

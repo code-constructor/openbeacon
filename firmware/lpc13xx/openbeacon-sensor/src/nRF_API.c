@@ -84,20 +84,8 @@ nRFAPI_SetRxMode (uint8_t receive)
 void
 nRFAPI_PowerDown (void)
 {
-  /* disable RX mode */
-  nRFCMD_CE (0);
-
-  /* wait 5ms */
-  pmu_sleep_ms (5);
-
-  /* switch to TX mode */
-  nRFAPI_SetRxMode (0);
-
   /* power don nRF24L01 */
   nRFCMD_RegWriteStatusRead (CONFIG | WRITE_REG, 0x00);
-
-  /* shut down pins */
-  nRFCMD_Shutdown ();
 }
 
 uint8_t

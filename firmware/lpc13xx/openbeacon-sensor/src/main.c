@@ -28,6 +28,8 @@
 #include "spi.h"
 #include "nRF_API.h"
 #include "nRF_CMD.h"
+#include "xxtea.h"
+#include "openbeacon-proto.h"
 
 uint32_t g_sysahbclkctrl;
 
@@ -40,8 +42,50 @@ uint32_t g_sysahbclkctrl;
 static uint16_t tag_id;
 static TDeviceUID device_uuid;
 
+/* OpenBeacon packet */
+static TBeaconEnvelope g_Beacon;
+
+/* Default TEA encryption key of the tag - MUST CHANGE ! */
+static const uint32_t xxtea_key[4] = { 0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF };
+
 /* set nRF24L01 broadcast mac */
 static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
+
+static void
+nRF_tx (uint8_t power)
+{
+  /* encrypt data */
+  xxtea_encode(g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
+
+  /* set TX power */
+  nRFAPI_SetTxPower (power & 0x3);
+
+  /* upload data to nRF24L01 */
+  nRFAPI_TX ((uint8_t*)&g_Beacon, sizeof(g_Beacon));
+
+  /* transmit data */
+  nRFCMD_CE (1);
+
+  /* wait for packet to be transmitted */
+  pmu_sleep_ms (2);
+
+  /* transmit data */
+  nRFCMD_CE (0);
+}
+
+void
+nrf_off (void)
+{
+  /* disable RX mode */
+  nRFCMD_CE (0);
+
+  /* wait till RX is done */
+  pmu_sleep_ms (5);
+
+  /* switch to TX mode */
+  nRFAPI_SetRxMode (0);
+
+}
 
 void
 int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
@@ -64,6 +108,7 @@ int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
 int
 main (void)
 {
+  uint32_t seq, SSPdiv;
   volatile int i;
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
@@ -191,8 +236,6 @@ main (void)
       }
   /* set tx power power to high */
   nRFCMD_Power (1);
-  /* test */
-  nRFAPI_PowerDown ();
 
   /* blink LED for 1s to show readyness */
   GPIOSetValue (1, 2, 1);
@@ -200,18 +243,38 @@ main (void)
   GPIOSetValue (1, 2, 0);
 
   /* disable unused jobs */
-  spi_close ();
+  SSPdiv = LPC_SYSCON->SSPCLKDIV;
+  seq = 0;
   while (1)
     {
-      pmu_sleep_ms (1700);
+      /* transmit every second */
+      pmu_sleep_ms (1000);
+
+      /* getting SPI back up again */
+      LPC_SYSCON->SSPCLKDIV = SSPdiv;
+      /* powering up nRF24L01 */
+      nRFAPI_SetRxMode(0);
+
+      /* prepare packet */
+      bzero (&g_Beacon, sizeof (g_Beacon));
+      g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
+      g_Beacon.pkt.oid = htons (tag_id);
+      g_Beacon.pkt.p.tracker.strength = 5;
+      g_Beacon.pkt.p.tracker.seq = htonl (seq++);
+      g_Beacon.pkt.p.tracker.reserved = 0;
+      g_Beacon.pkt.crc = htons(crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
+
+      /* transmit packet */
       GPIOSetValue (1, 2, 1);
-      pmu_sleep_ms (100);
+      nRF_tx (g_Beacon.pkt.p.tracker.strength);
       GPIOSetValue (1, 2, 0);
-      pmu_sleep_ms (100);
-      GPIOSetValue (1, 2, 1);
-      pmu_sleep_ms (100);
-      GPIOSetValue (1, 2, 0);
+
+      /* powering down */
+      nRFAPI_PowerDown ();
+      LPC_SYSCON->SSPCLKDIV = 0x00;
+
     }
 
   return 0;
 }
+

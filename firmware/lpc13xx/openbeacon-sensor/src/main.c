@@ -71,6 +71,11 @@ main (void)
   /* Initialize GPIO (sets up clock) */
   GPIOInit ();
 
+  /* switch PMU to high pwoer mode*/
+  LPC_IOCON->PIO0_5 = 1 << 8;
+  GPIOSetDir (0, 5, 1);		//OUT
+  GPIOSetValue (0, 5, 0);
+
   /* initialize power management */
   pmu_init ();
 
@@ -89,7 +94,7 @@ main (void)
 
   LPC_IOCON->PIO1_8 = 0;
   GPIOSetDir (1, 8, 1);		//OUT
-  GPIOSetValue (1, 8, 0);
+  GPIOSetValue (1, 8, 1);
 
   LPC_IOCON->PIO0_2 = 0;
   GPIOSetDir (0, 2, 1);		//OUT
@@ -101,10 +106,6 @@ main (void)
   LPC_IOCON->PIO0_4 = 1 << 8;
   GPIOSetDir (0, 4, 1);		//OUT
   GPIOSetValue (0, 4, 1);
-
-  LPC_IOCON->PIO0_5 = 1 << 8;
-  GPIOSetDir (0, 5, 1);		//OUT
-  GPIOSetValue (0, 5, 1);
 
   LPC_IOCON->PIO1_9 = 0;	//FIXME
   GPIOSetDir (1, 9, 1);		//OUT
@@ -119,7 +120,10 @@ main (void)
   GPIOSetValue (0, 7, 0);
 
   /* select UART_TXD */
-  LPC_IOCON->PIO1_7 = 1;
+//  LPC_IOCON->PIO1_7 = 1; FIXME
+  LPC_IOCON->PIO1_7 = 0;
+  GPIOSetDir (1, 7, 1);		//OUT
+  GPIOSetValue (1, 7, 0);
 
   LPC_IOCON->PIO1_6 = 0;
   GPIOSetDir (1, 6, 1);		//OUT
@@ -178,11 +182,6 @@ main (void)
   /* initialize SPI */
   spi_init ();
 
-#ifdef	SOUND_ENABLE
-  /* Init Speaker Output */
-  snd_init ();
-#endif /*SOUND_ENABLE */
-
   /* Init 3D acceleration sensor */
   acc_init (0);
 
@@ -195,9 +194,9 @@ main (void)
   if (!nRFAPI_Init (81, broadcast_mac, sizeof (broadcast_mac), 0))
     for (;;)
       {
-	GPIOSetValue (1, 3, 1);
+	GPIOSetValue (1, 2, 1);
 	pmu_sleep_ms (100);
-	GPIOSetValue (1, 3, 0);
+	GPIOSetValue (1, 2, 0);
 	pmu_sleep_ms (400);
       }
   /* set tx power power to high */
@@ -236,14 +235,27 @@ main (void)
    /* power sysem oscillator & BOD in deep sleep mode */
   LPC_SYSCON->PDSLEEPCFG = (~(SYSOSC_PD|BOD_PD)) & 0xFFF;
 
+  /* switch to PMU low power mode */
+  GPIOSetValue (0, 5, 1);
+  /* go sleeping */
   LPC_PMU->PCON = (1 << 11) | (1 << 8);
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
   LPC_SYSCON->SYSAHBCLKCTRL = EN_FLASHARRAY;
   __WFI ();
+  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM | EN_GPIO | EN_FLASHARRAY | EN_IOCON;
+  /* switch to PMU high power mode */
+  GPIOSetValue (0, 5, 0);
 
+  /* stop blinking */
   while (1)
     {
+    GPIOSetValue (1, 2, 1);
+    GPIOSetValue (1, 2, 0);
+    GPIOSetValue (1, 1, 1);
+    GPIOSetValue (1, 1, 0);
     }
+
+
 
   return 0;
 }

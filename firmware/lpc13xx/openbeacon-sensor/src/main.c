@@ -74,9 +74,6 @@ main (void)
   /* initialize power management */
   pmu_init ();
 
-  /* NVIC is installed inside UARTInit file. */
-  UARTInit (115200, 0);
-
   LPC_IOCON->PIO2_0 = 0;
   GPIOSetDir (2, 0, 1);		//OUT
   GPIOSetValue (2, 0, 0);
@@ -114,8 +111,6 @@ main (void)
   GPIOSetDir (0, 7, 1);		//OUT
   GPIOSetValue (0, 7, 0);
 
-  /* select UART_TXD */
-//  LPC_IOCON->PIO1_7 = 1; FIXME
   LPC_IOCON->PIO1_7 = 0;
   GPIOSetDir (1, 7, 1);		//OUT
   GPIOSetValue (1, 7, 0);
@@ -206,7 +201,6 @@ main (void)
 
   /* disable unused jobs */
   spi_close ();
-  LPC_SYSCON->UARTCLKDIV = 0;
   while (1)
     {
       pmu_sleep_ms (1700);

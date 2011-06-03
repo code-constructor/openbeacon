@@ -71,11 +71,6 @@ main (void)
   /* Initialize GPIO (sets up clock) */
   GPIOInit ();
 
-  /* switch PMU to high pwoer mode*/
-  LPC_IOCON->PIO0_5 = 1 << 8;
-  GPIOSetDir (0, 5, 1);		//OUT
-  GPIOSetValue (0, 5, 0);
-
   /* initialize power management */
   pmu_init ();
 
@@ -195,64 +190,28 @@ main (void)
     for (;;)
       {
 	GPIOSetValue (1, 2, 1);
-	pmu_sleep_ms (100);
+	pmu_sleep_ms (500);
 	GPIOSetValue (1, 2, 0);
-	pmu_sleep_ms (400);
+	pmu_sleep_ms (500);
       }
   /* set tx power power to high */
   nRFCMD_Power (1);
-
   /* test */
   nRFAPI_PowerDown ();
 
   /* blink LED for 1s to show readyness */
-  GPIOSetValue (1, 1, 1);
+  GPIOSetValue (1, 2, 1);
   pmu_sleep_ms (1000);
-  GPIOSetValue (1, 1, 0);
+  GPIOSetValue (1, 2, 0);
 
-  /* switch MAINCLKSEL to system PLL input */
-  LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_SYSPLL_IN;
-  /* push clock change */
-  LPC_SYSCON->MAINCLKUEN = 0;
-  LPC_SYSCON->MAINCLKUEN = 1;
-  while (!(LPC_SYSCON->MAINCLKUEN & 1));
-
-  LPC_SYSCON->SSPCLKDIV = 0;
-  LPC_SYSCON->UARTCLKDIV = 0;
-  LPC_SYSCON->USBCLKDIV = 0;
-  LPC_SYSCON->WDTCLKDIV = 0;
-  LPC_SYSCON->CLKOUTDIV = 0;
-  LPC_SYSCON->SYSTICKCLKDIV = 0;
-
-  /* set system clock to 2MHz */
+  /* set system clock to 12MHz */
   LPC_SYSCON->SYSAHBCLKDIV = 6;
-  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM | EN_GPIO | EN_FLASHARRAY | EN_IOCON;
-
-  /* disable unused stuff */
-  LPC_SYSCON->PDRUNCFG |= (IRCOUT_PD|IRC_PD|ADC_PD|WDTOSC_PD|SYSPLL_PD|USBPLL_PD|USBPAD_PD);
-  /* save current power settings, power WDT on wake */
-  LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
-   /* power sysem oscillator & BOD in deep sleep mode */
-  LPC_SYSCON->PDSLEEPCFG = (~(SYSOSC_PD|BOD_PD)) & 0xFFF;
-
-  /* switch to PMU low power mode */
-  GPIOSetValue (0, 5, 1);
-  /* go sleeping */
-  LPC_PMU->PCON = (1 << 11) | (1 << 8);
-  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-  LPC_SYSCON->SYSAHBCLKCTRL = EN_FLASHARRAY;
-  __WFI ();
-  LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM | EN_GPIO | EN_FLASHARRAY | EN_IOCON;
-  /* switch to PMU high power mode */
-  GPIOSetValue (0, 5, 0);
-
-  /* stop blinking */
   while (1)
     {
-    GPIOSetValue (1, 2, 1);
-    GPIOSetValue (1, 2, 0);
-    GPIOSetValue (1, 1, 1);
-    GPIOSetValue (1, 1, 0);
+      pmu_sleep_ms (1900);
+      GPIOSetValue (1, 2, 1);
+      pmu_sleep_ms (100);
+      GPIOSetValue (1, 2, 0);
     }
 
   return 0;

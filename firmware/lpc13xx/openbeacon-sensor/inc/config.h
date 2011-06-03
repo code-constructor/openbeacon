@@ -38,7 +38,7 @@
 /* SPI_CS(io_port, io_pin, CPSDVSR frequency, mode) */
 #define SPI_CS_FLASH SPI_CS( 1, 8, 2, SPI_CS_MODE_NORMAL )	/*  6.0MHz */
 #define SPI_CS_NRF   SPI_CS( 1,10, 2, SPI_CS_MODE_NORMAL )	/*  6.0MHz */
-#define SPI_CS_ACC3D SPI_CS( 0, 4, 3, SPI_CS_MODE_NORMAL )	/*  4.0MHz */
+#define SPI_CS_ACC3D SPI_CS( 0, 4, 2, SPI_CS_MODE_NORMAL )	/*  6.0MHz */
 
 #define NRF_MAX_MAC_SIZE 5
 

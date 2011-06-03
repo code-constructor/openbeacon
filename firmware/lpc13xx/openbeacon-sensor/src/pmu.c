@@ -86,7 +86,7 @@ pmu_sleep_ms (uint16_t ms)
   /* save current power settings, power WDT on wake */
   LPC_SYSCON->PDAWAKECFG = LPC_SYSCON->PDRUNCFG;
   /* power watchdog oscillator in deep sleep mode */
-  LPC_SYSCON->PDSLEEPCFG = (~(SYSOSC_PD|BOD_PD)) & 0xFFF;
+  LPC_SYSCON->PDSLEEPCFG = ~SYSOSC_PD & 0xFFF;
 
   /* shut down unused stuff */
   LPC_SYSCON->SYSAHBCLKCTRL = EN_RAM|EN_FLASHARRAY|EN_CT16B0;

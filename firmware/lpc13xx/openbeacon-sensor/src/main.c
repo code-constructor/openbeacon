@@ -206,9 +206,9 @@ main (void)
   nRFAPI_PowerDown ();
 
   /* blink LED for 1s to show readyness */
-  GPIOSetValue (1, 3, 1);
+  GPIOSetValue (1, 1, 1);
   pmu_sleep_ms (1000);
-  GPIOSetValue (1, 3, 0);
+  GPIOSetValue (1, 1, 0);
 
   /* switch MAINCLKSEL to system PLL input */
   LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_SYSPLL_IN;

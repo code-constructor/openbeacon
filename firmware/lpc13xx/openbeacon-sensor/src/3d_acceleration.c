@@ -76,10 +76,21 @@ acc_status (void)
 void
 acc_power (uint8_t enabled)
 {
+  /* switch to input if enabled */
+  if(enabled)
+    GPIOSetDir (1, 11, 0);
+
   /* dummy read - FIXME */
   acc_reg_read (0);
   /* set 3D acceleration sensor active, 2g - FIXME power saving */
   acc_reg_write (0x16, enabled ? (0x01 | 0x01 << 2) : 0x00);
+
+  /* switch to output after shutting down */
+  if(!enabled)
+  {
+    GPIOSetDir (1, 11, 1);
+    GPIOSetValue (1, 11, 0);
+  }
 }
 
 void

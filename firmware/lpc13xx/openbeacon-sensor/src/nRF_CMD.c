@@ -195,21 +195,9 @@ WAKEUP_IRQHandlerPIO1_9 (void)
 void
 nRFCMD_Shutdown (void)
 {
-  /* disable RX mode */
-  nRFCMD_CE (0);
-
-  /* wait 5ms */
-  pmu_sleep_ms (5);
-
-  /* switch to TX mode */
-  nRFAPI_SetRxMode (0);
-
-  /* powering down */
-  nRFAPI_PowerDown ();
-
   /* set pins to lowest power */
   GPIOSetDir (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN, 1);
-  GPIOSetValue (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN, 0);
+  GPIOSetValue (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN, 1);
   GPIOSetValue (CPU_CE_RF_PORT, CPU_CE_RF_PIN, 0);
   GPIOSetValue (CPU_SWITCH_RF_PORT, CPU_SWITCH_RF_PIN, 0);
 }

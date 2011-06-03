@@ -205,7 +205,7 @@ main (void)
   GPIOSetValue (1, 2, 0);
 
   /* disable unused jobs */
-  LPC_SYSCON->SSPCLKDIV = 0;
+  spi_close ();
   LPC_SYSCON->UARTCLKDIV = 0;
   /* set system clock to 12MHz */
   LPC_SYSCON->SYSAHBCLKDIV = 6;

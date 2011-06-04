@@ -114,15 +114,6 @@ pmu_init (void)
   LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO0_8;
   LPC_SYSCON->STARTERP0 |= STARTxPRP0_PIO0_8;
 
-  /* prepare 32B0 timer */
-  LPC_TMR32B0->TCR = 2;
-  LPC_TMR32B0->PR = (SYSTEM_CRYSTAL_CLOCK/LPC_SYSCON->SYSAHBCLKDIV)/1000;
-  LPC_TMR32B0->EMR = 0;
-  /* start 32B0 timer */
-  LPC_TMR32B0->TCR = 1;
-
-  /* enable 16B0 timer */
-  LPC_SYSCON->SYSAHBCLKCTRL |= EN_CT16B0|EN_CT32B0;
   /* switch MAINCLKSEL to system PLL input */
   LPC_SYSCON->MAINCLKSEL = MAINCLKSEL_SYSPLL_IN;
   /* push clock change */
@@ -131,6 +122,16 @@ pmu_init (void)
   while (!(LPC_SYSCON->MAINCLKUEN & 1));
   /* set system clock to 6MHz */
   LPC_SYSCON->SYSAHBCLKDIV = 2;
+
+  /* enable 16B0/32B0 timers */
+  LPC_SYSCON->SYSAHBCLKCTRL |= EN_CT16B0|EN_CT32B0;
+
+  /* prepare 32B0 timer */
+  LPC_TMR32B0->TCR = 2;
+  LPC_TMR32B0->PR = (SYSTEM_CRYSTAL_CLOCK/LPC_SYSCON->SYSAHBCLKDIV)/1000;
+  LPC_TMR32B0->EMR = 0;
+  /* start 32B0 timer */
+  LPC_TMR32B0->TCR = 1;
 
   /* disable unused jobs */
   LPC_SYSCON->SSPCLKDIV = 0;

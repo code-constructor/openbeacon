@@ -108,7 +108,7 @@ int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
 int
 main (void)
 {
-  uint32_t seq, SSPdiv;
+  uint32_t SSPdiv;
   volatile int i;
   /* wait on boot - debounce */
   for (i = 0; i < 2000000; i++);
@@ -244,7 +244,6 @@ main (void)
 
   /* disable unused jobs */
   SSPdiv = LPC_SYSCON->SSPCLKDIV;
-  seq = 0;
   while (1)
     {
       /* transmit every second */
@@ -260,7 +259,7 @@ main (void)
       g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
       g_Beacon.pkt.oid = htons (tag_id);
       g_Beacon.pkt.p.tracker.strength = 5;
-      g_Beacon.pkt.p.tracker.seq = htonl (seq++);
+      g_Beacon.pkt.p.tracker.seq = htonl (LPC_TMR32B0->TC);
       g_Beacon.pkt.p.tracker.reserved = 0;
       g_Beacon.pkt.crc = htons(crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
 

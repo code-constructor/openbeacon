@@ -31,7 +31,11 @@
 #include "xxtea.h"
 #include "openbeacon-proto.h"
 
-uint32_t g_sysahbclkctrl;
+/* device UUID */
+static uint16_t tag_id;
+static TDeviceUID device_uuid;
+/* random seed */
+static uint32_t random_seed;
 
 #define TX_STRENGTH_OFFSET 2
 
@@ -40,12 +44,6 @@ uint32_t g_sysahbclkctrl;
 #define MAINCLKSEL_WDT 2
 #define MAINCLKSEL_SYSPLL_OUT 3
 
-/* device UUID */
-static uint16_t tag_id;
-static TDeviceUID device_uuid;
-
-/* OpenBeacon packet */
-static TBeaconEnvelope g_Beacon;
 
 /* Default TEA encryption key of the tag - MUST CHANGE ! */
 static const uint32_t xxtea_key[4] = {
@@ -60,8 +58,10 @@ static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = {
   1, 2, 3, 2, 1
 };
 
-/* random seed */
-uint32_t random_seed;
+#if 0
+
+/* OpenBeacon packet */
+static TBeaconEnvelope g_Beacon;
 
 static void
 nRF_tx (uint8_t power)
@@ -112,13 +112,15 @@ rnd (uint32_t range)
   return ((((v1 = 36969 * (v1 & 0xffff) + (v1 >> 16)) << 16) ^
 	   (v2 = 30963 * (v2 & 0xffff) + (v2 >> 16))) ^ random_seed) % range;
 }
-
+#endif
 int
 main (void)
 {
   uint32_t SSPdiv;
-  uint16_t crc, oid_last_seen;
-  uint8_t status, seen_low, seen_high;
+//  uint16_t crc, oid_last_seen;
+//  uint8_t status, seen_low, seen_high;
+  uint16_t oid_last_seen;
+  uint8_t seen_low, seen_high;
   volatile int t;
   int i;
 
@@ -264,27 +266,29 @@ main (void)
   while (1)
     {
       /* transmit every 50-150ms */
-      pmu_sleep_ms (50 + rnd (100));
+      pmu_sleep_ms (1000);
+//      pmu_sleep_ms (50 + rnd (100));
 
       /* getting SPI back up again */
       LPC_SYSCON->SSPCLKDIV = SSPdiv;
 
+#if 0
       /* blink every 16th packet transmitted */
       if ((i & 0xF) == 0)
 	{
 	  /* switch to RX mode */
 	  nRFAPI_SetRxMode (1);
 	  nRFCMD_CE (1);
-	  pmu_sleep_ms (30);
+	  pmu_sleep_ms (50);
 	  nRFCMD_CE (0);
 	  /* fire up LED */
 	  GPIOSetValue (1, 2, 1);
 	  /* wait till RX stops */
-	  pmu_sleep_ms (2);
+	  pmu_sleep_ms (10);
 	  /* turn LED off */
 	  GPIOSetValue (1, 2, 0);
 	  nRFAPI_SetRxMode (0);
-	  if (!nRFCMD_IRQ ())
+	  if (nRFCMD_IRQ ())
 	    {
 	      do
 		{
@@ -302,7 +306,7 @@ main (void)
 		  if ((ntohs (g_Beacon.pkt.crc) == crc) &&
 		      (g_Beacon.pkt.proto == RFBPROTO_BEACONTRACKER))
 		    {
-		      oid_last_seen = g_Beacon.pkt.p.tracker.oid_last_seen;
+		      oid_last_seen = g_Beacon.pkt.oid;
 		      switch (g_Beacon.pkt.p.tracker.strength)
 			{
 			case TX_STRENGTH_OFFSET:
@@ -327,6 +331,9 @@ main (void)
 	}
       else
 	{
+	  /* powering up nRF24L01 */
+	  nRFAPI_SetRxMode (0);
+
 	  /* prepare packet */
 	  bzero (&g_Beacon, sizeof (g_Beacon));
 	  g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
@@ -344,8 +351,6 @@ main (void)
 
 	  /* set tx power to low */
 	  nRFCMD_Power (0);
-	  /* powering up nRF24L01 */
-	  nRFAPI_SetRxMode (0);
 	  /* transmit packet */
 	  nRF_tx (g_Beacon.pkt.p.tracker.strength);
 	  nRFCMD_Power (1);
@@ -353,6 +358,7 @@ main (void)
 
       /* powering down */
       nRFAPI_PowerDown ();
+#endif
       LPC_SYSCON->SSPCLKDIV = 0x00;
 
       /* increment counter */

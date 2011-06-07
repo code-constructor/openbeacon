@@ -50,7 +50,7 @@ static uint8_t spi_inbuf[SPI_MAX_XFER_LEN];
 uint8_t
 nRFCMD_IRQ (void)
 {
-  return GPIOGetValue (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN);
+  return !GPIOGetValue (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN);
 }
 
 void

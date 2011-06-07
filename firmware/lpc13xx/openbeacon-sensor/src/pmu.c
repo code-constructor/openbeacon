@@ -60,7 +60,7 @@ void
 pmu_cancel_timer (void)
 {
   /* stop 16B0 timer */
-  LPC_TMR16B0->TCR = 0;
+  LPC_TMR16B0->TCR = 2;
   /* set 16B0 timer to 0 */
   LPC_TMR16B0->TC = 0;
 

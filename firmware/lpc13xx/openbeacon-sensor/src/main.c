@@ -51,6 +51,9 @@ static const uint32_t xxtea_key[4] = { 0x00112233, 0x44556677, 0x8899AABB, 0xCCD
 /* set nRF24L01 broadcast mac */
 static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
 
+/* random seed */
+uint32_t random_seed;
+
 static void
 nRF_tx (uint8_t power)
 {
@@ -84,7 +87,6 @@ nrf_off (void)
 
   /* switch to TX mode */
   nRFAPI_SetRxMode (0);
-
 }
 
 void
@@ -105,13 +107,26 @@ int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
   }
 }
 
+static uint32_t
+rnd(uint32_t range)
+{
+  static uint32_t v1 = 0x52f7d319;
+  static uint32_t v2 = 0x6e28014a;
+
+  // MWC generator, period length 1014595583
+  return ((((v1 = 36969 * (v1 & 0xffff) + (v1 >> 16)) << 16) ^ (v2 = 30963
+    * (v2 & 0xffff) + (v2 >> 16)))^random_seed^LPC_TMR32B0->TC)%range;
+}
+
 int
 main (void)
 {
   uint32_t SSPdiv;
-  volatile int i;
+  volatile int t;
+  int i;
+
   /* wait on boot - debounce */
-  for (i = 0; i < 2000000; i++);
+  for (t = 0; t < 2000000; t++);
 
   /* Initialize GPIO (sets up clock) */
   GPIOInit ();
@@ -224,6 +239,7 @@ main (void)
   bzero (&device_uuid, sizeof (device_uuid));
   iap_read_uid (&device_uuid);
   tag_id = crc16 ((uint8_t *) & device_uuid, sizeof (device_uuid));
+  random_seed = device_uuid[0] ^ device_uuid[1] ^ device_uuid[2] ^ device_uuid[3];
 
   /* Initialize OpenBeacon nRF24L01 interface */
   if (!nRFAPI_Init (81, broadcast_mac, sizeof (broadcast_mac), 0))
@@ -244,10 +260,11 @@ main (void)
 
   /* disable unused jobs */
   SSPdiv = LPC_SYSCON->SSPCLKDIV;
+  i=0;
   while (1)
     {
-      /* transmit every second */
-      pmu_sleep_ms (1000);
+      /* transmit every 50-150ms */
+      pmu_sleep_ms (50+rnd(100));
 
       /* getting SPI back up again */
       LPC_SYSCON->SSPCLKDIV = SSPdiv;
@@ -264,7 +281,8 @@ main (void)
       g_Beacon.pkt.crc = htons(crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
 
       /* transmit packet */
-      GPIOSetValue (1, 2, 1);
+      if((i++ & 0xF) == 0)
+        GPIOSetValue (1, 2, 1);
       nRF_tx (g_Beacon.pkt.p.tracker.strength);
       GPIOSetValue (1, 2, 0);
 

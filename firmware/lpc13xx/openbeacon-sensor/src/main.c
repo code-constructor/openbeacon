@@ -58,8 +58,6 @@ static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = {
   1, 2, 3, 2, 1
 };
 
-#if 0
-
 /* OpenBeacon packet */
 static TBeaconEnvelope g_Beacon;
 
@@ -112,15 +110,13 @@ rnd (uint32_t range)
   return ((((v1 = 36969 * (v1 & 0xffff) + (v1 >> 16)) << 16) ^
 	   (v2 = 30963 * (v2 & 0xffff) + (v2 >> 16))) ^ random_seed) % range;
 }
-#endif
+
 int
 main (void)
 {
   uint32_t SSPdiv;
-//  uint16_t crc, oid_last_seen;
-//  uint8_t status, seen_low, seen_high;
-  uint16_t oid_last_seen;
-  uint8_t seen_low, seen_high;
+  uint16_t crc, oid_last_seen;
+  uint8_t status, seen_low, seen_high;
   volatile int t;
   int i;
 
@@ -266,13 +262,11 @@ main (void)
   while (1)
     {
       /* transmit every 50-150ms */
-      pmu_sleep_ms (1000);
-//      pmu_sleep_ms (50 + rnd (100));
+      pmu_sleep_ms (50 + rnd (100));
 
       /* getting SPI back up again */
       LPC_SYSCON->SSPCLKDIV = SSPdiv;
 
-#if 0
       /* blink every 16th packet transmitted */
       if ((i & 0xF) == 0)
 	{
@@ -358,7 +352,6 @@ main (void)
 
       /* powering down */
       nRFAPI_PowerDown ();
-#endif
       LPC_SYSCON->SSPCLKDIV = 0x00;
 
       /* increment counter */

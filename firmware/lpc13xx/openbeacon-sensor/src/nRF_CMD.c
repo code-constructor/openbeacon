@@ -47,6 +47,12 @@
 static uint8_t spi_outbuf[SPI_MAX_XFER_LEN];
 static uint8_t spi_inbuf[SPI_MAX_XFER_LEN];
 
+uint8_t
+nRFCMD_IRQ (void)
+{
+  return GPIOGetValue (RF_IRQ_CPU_PORT, RF_IRQ_CPU_PIN);
+}
+
 void
 nRFCMD_CE (uint8_t enable)
 {
@@ -188,8 +194,8 @@ WAKEUP_IRQHandlerPIO1_9 (void)
   /* Clear pending IRQ */
   LPC_SYSCON->STARTRSRP0CLR = STARTxPRP0_PIO1_9;
 
-  SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-  __NOP ();
+  /* cancel pending timer operation */
+  pmu_cancel_timer();
 }
 
 void

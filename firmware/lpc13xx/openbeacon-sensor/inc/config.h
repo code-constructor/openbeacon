@@ -32,9 +32,6 @@
 #define SYSTEM_CRYSTAL_CLOCK 12000000
 #define SYSTEM_CORE_CLOCK (SYSTEM_CRYSTAL_CLOCK*6)
 
-/* Enable Sound Output */
-#define SOUND_ENABLE
-
 /* SPI_CS(io_port, io_pin, CPSDVSR frequency, mode) */
 #define SPI_CS_FLASH SPI_CS( 1, 8, 2, SPI_CS_MODE_NORMAL )	/*  6.0MHz */
 #define SPI_CS_NRF   SPI_CS( 1,10, 2, SPI_CS_MODE_NORMAL )	/*  6.0MHz */

@@ -25,6 +25,7 @@
 #define __PMU_H__
 
 extern void pmu_sleep_ms (uint16_t ms);
+extern void pmu_cancel_timer (void);
 extern void pmu_init (void);
 
 #endif/*__PMU_H__*/

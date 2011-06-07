@@ -57,6 +57,18 @@ WAKEUP_IRQHandlerPIO0_8 (void)
 }
 
 void
+pmu_cancel_timer (void)
+{
+  /* stop 16B0 timer */
+  LPC_TMR16B0->TCR = 0;
+  /* set 16B0 timer to 0 */
+  LPC_TMR16B0->TC = 0;
+
+  /* call IRQ handler */
+  WAKEUP_IRQHandlerPIO0_8();
+}
+
+void
 pmu_sleep_ms (uint16_t ms)
 {
   if (ms < 1)

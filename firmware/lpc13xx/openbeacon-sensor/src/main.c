@@ -33,6 +33,8 @@
 
 uint32_t g_sysahbclkctrl;
 
+#define TX_STRENGTH_OFFSET 2
+
 #define MAINCLKSEL_IRC 0
 #define MAINCLKSEL_SYSPLL_IN 1
 #define MAINCLKSEL_WDT 2
@@ -46,10 +48,17 @@ static TDeviceUID device_uuid;
 static TBeaconEnvelope g_Beacon;
 
 /* Default TEA encryption key of the tag - MUST CHANGE ! */
-static const uint32_t xxtea_key[4] = { 0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF };
+static const uint32_t xxtea_key[4] = {
+  0x00112233,
+  0x44556677,
+  0x8899AABB,
+  0xCCDDEEFF
+};
 
 /* set nRF24L01 broadcast mac */
-static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = { 1, 2, 3, 2, 1 };
+static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] = {
+  1, 2, 3, 2, 1
+};
 
 /* random seed */
 uint32_t random_seed;
@@ -57,14 +66,15 @@ uint32_t random_seed;
 static void
 nRF_tx (uint8_t power)
 {
+
   /* encrypt data */
-  xxtea_encode(g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
+  xxtea_encode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
 
   /* set TX power */
   nRFAPI_SetTxPower (power & 0x3);
 
   /* upload data to nRF24L01 */
-  nRFAPI_TX ((uint8_t*)&g_Beacon, sizeof(g_Beacon));
+  nRFAPI_TX ((uint8_t *) & g_Beacon, sizeof (g_Beacon));
 
   /* transmit data */
   nRFCMD_CE (1);
@@ -89,39 +99,26 @@ nrf_off (void)
   nRFAPI_SetRxMode (0);
 }
 
-void
-int2str (uint32_t value, uint8_t digits, uint8_t base, char* string)
-{
-  uint8_t digit;
-  while(digits)
-  {
-    digit = value % base;
-    value/= base;
-
-    if(digit<=9)
-	digit+='0';
-    else
-	digit='A'+(digit-0xA);
-
-    string[--digits]=digit;
-  }
-}
-
 static uint32_t
-rnd(uint32_t range)
+rnd (uint32_t range)
 {
   static uint32_t v1 = 0x52f7d319;
   static uint32_t v2 = 0x6e28014a;
 
-  // MWC generator, period length 1014595583
-  return ((((v1 = 36969 * (v1 & 0xffff) + (v1 >> 16)) << 16) ^ (v2 = 30963
-    * (v2 & 0xffff) + (v2 >> 16)))^random_seed^LPC_TMR32B0->TC)%range;
+  /* reseed random with timer */
+  random_seed += LPC_TMR32B0->TC;
+
+  /* MWC generator, period length 1014595583 */
+  return ((((v1 = 36969 * (v1 & 0xffff) + (v1 >> 16)) << 16) ^
+	   (v2 = 30963 * (v2 & 0xffff) + (v2 >> 16))) ^ random_seed) % range;
 }
 
 int
 main (void)
 {
   uint32_t SSPdiv;
+  uint16_t crc, oid_last_seen;
+  uint8_t status, seen_low, seen_high;
   volatile int t;
   int i;
 
@@ -239,7 +236,8 @@ main (void)
   bzero (&device_uuid, sizeof (device_uuid));
   iap_read_uid (&device_uuid);
   tag_id = crc16 ((uint8_t *) & device_uuid, sizeof (device_uuid));
-  random_seed = device_uuid[0] ^ device_uuid[1] ^ device_uuid[2] ^ device_uuid[3];
+  random_seed =
+    device_uuid[0] ^ device_uuid[1] ^ device_uuid[2] ^ device_uuid[3];
 
   /* Initialize OpenBeacon nRF24L01 interface */
   if (!nRFAPI_Init (81, broadcast_mac, sizeof (broadcast_mac), 0))
@@ -260,36 +258,105 @@ main (void)
 
   /* disable unused jobs */
   SSPdiv = LPC_SYSCON->SSPCLKDIV;
-  i=0;
+  i = 0;
+  seen_low = seen_high = 0;
+  oid_last_seen = 0;
   while (1)
     {
       /* transmit every 50-150ms */
-      pmu_sleep_ms (50+rnd(100));
+      pmu_sleep_ms (50 + rnd (100));
 
       /* getting SPI back up again */
       LPC_SYSCON->SSPCLKDIV = SSPdiv;
-      /* powering up nRF24L01 */
-      nRFAPI_SetRxMode(0);
 
-      /* prepare packet */
-      bzero (&g_Beacon, sizeof (g_Beacon));
-      g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
-      g_Beacon.pkt.oid = htons (tag_id);
-      g_Beacon.pkt.p.tracker.strength = 5;
-      g_Beacon.pkt.p.tracker.seq = htonl (LPC_TMR32B0->TC);
-      g_Beacon.pkt.p.tracker.reserved = 0;
-      g_Beacon.pkt.crc = htons(crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
+      /* blink every 16th packet transmitted */
+      if ((i & 0xF) == 0)
+	{
+	  /* switch to RX mode */
+	  nRFAPI_SetRxMode (1);
+	  nRFCMD_CE (1);
+	  pmu_sleep_ms (30);
+	  nRFCMD_CE (0);
+	  /* fire up LED */
+	  GPIOSetValue (1, 2, 1);
+	  /* wait till RX stops */
+	  pmu_sleep_ms (2);
+	  /* turn LED off */
+	  GPIOSetValue (1, 2, 0);
+	  nRFAPI_SetRxMode (0);
+	  if (!nRFCMD_IRQ ())
+	    {
+	      do
+		{
+		  // read packet from nRF chip
+		  nRFCMD_RegReadBuf (RD_RX_PLOAD, g_Beacon.byte,
+				     sizeof (g_Beacon));
 
-      /* transmit packet */
-      if((i++ & 0xF) == 0)
-        GPIOSetValue (1, 2, 1);
-      nRF_tx (g_Beacon.pkt.p.tracker.strength);
-      GPIOSetValue (1, 2, 0);
+		  // adjust byte order and decode
+		  xxtea_decode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
+
+		  // verify the CRC checksum
+		  crc = crc16 (g_Beacon.byte,
+			       sizeof (g_Beacon) - sizeof (uint16_t));
+
+		  if ((ntohs (g_Beacon.pkt.crc) == crc) &&
+		      (g_Beacon.pkt.proto == RFBPROTO_BEACONTRACKER))
+		    {
+		      oid_last_seen = g_Beacon.pkt.p.tracker.oid_last_seen;
+		      switch (g_Beacon.pkt.p.tracker.strength)
+			{
+			case TX_STRENGTH_OFFSET:
+			  seen_low++;
+			  break;
+			case TX_STRENGTH_OFFSET + 1:
+			  seen_high++;
+			  break;
+			}
+		      /* fire up LED to indicate rx */
+		      GPIOSetValue (1, 1, 1);
+		      /* light LED for 2ms */
+		      pmu_sleep_ms (2);
+		      /* turn LED off */
+		      GPIOSetValue (1, 1, 0);
+		    }
+		  status = nRFAPI_GetFifoStatus ();
+		}
+	      while ((status & FIFO_RX_EMPTY) == 0);
+	    }
+	  nRFAPI_ClearIRQ (MASK_IRQ_FLAGS);
+	}
+      else
+	{
+	  /* prepare packet */
+	  bzero (&g_Beacon, sizeof (g_Beacon));
+	  g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
+	  g_Beacon.pkt.oid = htons (tag_id);
+	  g_Beacon.pkt.p.tracker.strength = (i & 1) + TX_STRENGTH_OFFSET;
+	  g_Beacon.pkt.p.tracker.seq = htonl (LPC_TMR32B0->TC);
+	  g_Beacon.pkt.p.tracker.oid_last_seen = oid_last_seen;
+	  g_Beacon.pkt.p.tracker.seen_low = seen_low;
+	  g_Beacon.pkt.p.tracker.seen_high = seen_high;
+	  g_Beacon.pkt.p.tracker.reserved = 0;
+	  g_Beacon.pkt.crc =
+	    htons (crc16
+		   (g_Beacon.byte,
+		    sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
+
+	  /* set tx power to low */
+	  nRFCMD_Power (0);
+	  /* powering up nRF24L01 */
+	  nRFAPI_SetRxMode (0);
+	  /* transmit packet */
+	  nRF_tx (g_Beacon.pkt.p.tracker.strength);
+	  nRFCMD_Power (1);
+	}
 
       /* powering down */
       nRFAPI_PowerDown ();
       LPC_SYSCON->SSPCLKDIV = 0x00;
+
+      /* increment counter */
+      i++;
     }
   return 0;
 }
-

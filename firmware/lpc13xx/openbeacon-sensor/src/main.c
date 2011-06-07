@@ -273,7 +273,7 @@ main (void)
 	  /* switch to RX mode */
 	  nRFAPI_SetRxMode (1);
 	  nRFCMD_CE (1);
-	  pmu_sleep_ms (50);
+	  pmu_sleep_ms (20);
 	  nRFCMD_CE (0);
 	  /* fire up LED */
 	  GPIOSetValue (1, 2, 1);

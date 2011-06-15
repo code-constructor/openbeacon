@@ -1,0 +1,7 @@
+*.o
+*.asm
+*.bin
+*.elf
+*.map
+.cproject
+.project

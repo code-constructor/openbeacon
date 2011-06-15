@@ -68,11 +68,10 @@ typedef struct
 	TBeaconHeader hdr;
 	u_int8_t oid; //own id
 	u_int16_t tagId; //id of the tag
-	u_int16_t signals; //quantitative evaluation of all received signal strengths(0-3)
+	u_int32_t signals; //quantitative evaluation of all received signal strengths(0-3)
 	u_int16_t x; //x-coordinate
 	u_int16_t y; //y-coordinate
 	u_int8_t building; //building id
-	u_int16_t reserved;
 	u_int16_t crc;
 } __attribute__ ((packed)) TBeaconCollectedForwarder;
 

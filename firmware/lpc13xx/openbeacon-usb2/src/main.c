@@ -52,6 +52,7 @@ static const unsigned char broadcast_mac[NRF_MAX_MAC_SIZE] =
 /* device UUID */
 static uint16_t tag_id;
 static TDeviceUID device_uuid;
+static uint32_t curSignal;
 
 #if (USB_HID_IN_REPORT_SIZE>0)||(USB_HID_OUT_REPORT_SIZE>0)
 static uint8_t hid_buffer[USB_HID_IN_REPORT_SIZE];
@@ -149,20 +150,27 @@ void main_menue(uint8_t cmd)
  * add signalstrenght to uint16_t signals
  */
 static
-void incrementStrenghtForIndex(int index, uint16_t strenth){
-	uint32_t curSignal;
-
+void incrementStrenghtForIndex(int index, uint16_t strength){
+	(void) curSignal;
 	//get signalcount
-	curSignal = (g_collection[index].signals >> (4 * strenth)) & 0x0000000F;
+	curSignal = (g_collection[index].signals >> (4 * strength)) & 0x0000000F;
 
 	//increment signal
-	curSignal = curSignal + 1;
+	if(curSignal < 15)	
+	   curSignal = curSignal + 1;
 
 	//check if signalincrement not bigger than 15
-	curSignal = (curSignal & 0x0000000F) << (4 * strenth);
+	curSignal = (curSignal & 0x0000000F) << (4 * strength);
 
 	//push the signalstrenght 0-3 away and add signals to struct
-	g_collection[index].signals = ((g_collection[index].signals & (0xFFFFFFFF ^ (0x0000000F << (4 * strenth)))) | curSignal);
+	g_collection[index].signals = (((g_collection[index].signals & (0xFFFFFFFF ^ (0x0000000F << (4 * strength)))) | curSignal));
+
+	/*curSignal = g_collection[index].signals;
+    	//check if signalstrenght bigger then 16 (1111)
+    	if(((curSignal >> (4 * strength)) & 0x0000000F) ^ 0x0000000F){
+    		//increment signal-counter
+    		g_collection[index].signals = g_collection[index].signals + (1 << (4 * strength));
+    	}*/
 }
 
 /*
@@ -317,8 +325,10 @@ void nRF_Task(void *pvParameters)
 						case RFBPROTO_BEACONPOSITIONTRACKER:
 							//add received data to collection array
 							collectForwardData();
-							if(active)
+															
+							if(active){
 								debug_printf("%i:%i\n",ntohs(g_Beacon.pos.oid) ,((g_Beacon.pos.strengthAndZ) >> 4));
+							}
 						break;
 
 						default:
@@ -348,7 +358,7 @@ void nRF_Task(void *pvParameters)
 			//send away if the dataset not empty
 			for(i = 0; i < COLLECTION_SIZE; i++){
 				if(g_collection[i].tagId != 0){
-					g_collection[i].signals = htons(g_collection[i].signals);
+					g_collection[i].signals = htonl(g_collection[i].signals);
 					g_Beacon.forwarder = g_collection[i];
 					g_Beacon.forwarder.hdr.proto = RFBPROTO_BEACONCOLLECTEDFORWARDER;
 					g_Beacon.forwarder.hdr.size = sizeof(g_Beacon);

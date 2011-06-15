@@ -157,6 +157,7 @@ void vnRFtaskRx(void *parameter)
 				shuffle_tx_byteorder();
 
 				//select protocol
+				DumpUIntToUSB(g_Beacon.pos.hdr.proto);
 				switch (g_Beacon.pos.hdr.proto)
 				{
 				case RFBPROTO_BEACONPOSITIONTRACKER:
@@ -197,14 +198,24 @@ showInformationFromForwarder(void)
 		if ((swapshort (g_Beacon.forwarder.crc) == crc)){
 			DumpStringToUSB ("Forwarder: oid:");
 			DumpUIntToUSB (g_Beacon.forwarder.oid);
+			DumpStringToUSB (", signals:");
+			DumpUIntToUSB (swaplong(g_Beacon.forwarder.signals));
 			DumpStringToUSB (", signals[0]:");
-			DumpUIntToUSB (swapshort(g_Beacon.forwarder.signals) & 0x000F);
+			DumpUIntToUSB (swaplong(g_Beacon.forwarder.signals) & 0x0000000F);
 			DumpStringToUSB (", signals[1]:");
-			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 4) & 0x000F);
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 4) & 0x0000000F);
 			DumpStringToUSB (", signals[2]:");
-			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 8) & 0x000F);
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 8) & 0x0000000F);
 			DumpStringToUSB (", signals[3]:");
-			DumpUIntToUSB ((swapshort(g_Beacon.forwarder.signals) >> 12) & 0x000F);
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 12) & 0x0000000F);
+			DumpStringToUSB (", signals[4]:");
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 16) & 0x0000000F);
+			DumpStringToUSB (", signals[5]:");
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 20) & 0x0000000F);
+			DumpStringToUSB (", signals[6]:");
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 24) & 0x0000000F);
+			DumpStringToUSB (", signals[7]:");
+			DumpUIntToUSB ((swaplong(g_Beacon.forwarder.signals) >> 28) & 0x0000000F);
 			DumpStringToUSB (", tagId:");
 			DumpUIntToUSB (swapshort(g_Beacon.forwarder.tagId));
 			DumpStringToUSB (", x:");

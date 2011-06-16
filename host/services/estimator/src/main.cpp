@@ -418,10 +418,11 @@ main (void)
 		  continue;
 		}
 
-	      reader_id = ntohl (pkt->forw.tagID) & 0x0FFF;
+	      reader_id = ntohs (pkt->forw.tagID) & 0x0FFF;
 	      tag_id = pkt->forw.oid;
 	      tag_sequence = 0;//FIXME
 	      tag_flags = 0;
+	      printf("oid:%i\n\ttagID:%i\n\tstrength:0x%08X\n", tag_id, reader_id, ntohl(pkt->forw.signal));
 
 	      if((item = ((TEstimatorItem *)
 			g_map_reader.Add ((((uint64_t) reader_id) << 32) |
@@ -502,7 +503,7 @@ main (void)
 			  aggregation->time = timestamp;
 			}
 
-		      t = htonl(pkt->forw.signal);
+		      t = ntohl(pkt->forw.signal);
 		      for (j = 0; j < STRENGTH_LEVELS_COUNT ; j++ )
 			aggregation->strength[j]+=((t >> (j*4)) & 0xF); //MAGIC!
 

@@ -24,7 +24,7 @@
  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-#include <mysql.h>
+#include <mysql/mysql.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
@@ -354,12 +354,10 @@ main (void)
   TTagItem *tag;
   TBeaconEnvelope beacons[100], *pkt;
   int j, items, sock;
-  uint32_t reader_id, tag_id, tag_flags, tag_sequence, delta_t, t, timestamp,
-    tag_sighting;
+  uint32_t reader_id, tag_id, tag_flags, tag_sequence, delta_t, t, timestamp;
   socklen_t slen = sizeof (si_other);
   TEstimatorItem *item;
   TAggregation *aggregation;
-  char sql_req[4096];
 
   mysql_library_init (0, NULL, NULL);
   g_db = db_connect (NULL);
@@ -409,7 +407,8 @@ main (void)
 		   sizeof (pkt->forw) - sizeof (pkt->forw.crc)) !=
 		  ntohs (pkt->forw.crc))
 		{
-		  printf ("CRC error from reader 0x%08X\n", reader_id);
+		  printf ("CRC error from reader IP 0x%08X\n",
+		    ntohl (si_other.sin_addr.s_addr));
 		  continue;
 		}
 
@@ -424,9 +423,9 @@ main (void)
 	      tag_sequence = 0;//FIXME
 	      tag_flags = 0;
 
-	      if(item = ((TEstimatorItem *)
+	      if((item = ((TEstimatorItem *)
 			g_map_reader.Add ((((uint64_t) reader_id) << 32) |
-			tag_id, &item_mutex)) != NULL)
+			tag_id, &item_mutex))) != NULL)
 		{
 		  timestamp = time (NULL);
 		  item->timestamp = timestamp;

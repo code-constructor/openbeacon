@@ -94,12 +94,10 @@ typedef struct
   TBeaconHeader hdr;
   u_int8_t oid; //own id
   u_int16_t tagID; //consists of oid an z-coordinate
-  u_int16_t signal; //counted signals (4bits for every signal strength) strength 0 is on the right side
+  u_int32_t signal; //counted signals (4bits for every signal strength) strength 0 is on the right side
   u_int16_t x; //x coordinate of the tag
   u_int16_t y; //y coordinate of the tag
-  //u_int8_t z :4;
   u_int8_t building; //building-number where the tag is
-  u_int16_t reserved; //reserved bytes to fill the struct up to 16 bytes
   u_int16_t crc; //crc checksum
 } PACKED TBeaconForwarder;
 

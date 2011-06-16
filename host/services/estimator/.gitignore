@@ -19,3 +19,4 @@ src/*.o
 src/Makefile
 src/Makefile.in
 stamp-h1
+*~

@@ -32,6 +32,8 @@
 #define RFBPROTO_READER_ANNOUNCE 22
 #define RFBPROTO_READER_COMMAND  23
 #define RFBPROTO_BEACONTRACKER   24
+#define RFBPROTO_BEACONPOSTRACKER	27
+#define RFBPROTO_BEACONFORWARDER	28
 #define RFBPROTO_PROXTRACKER     42
 #define RFBPROTO_PROXREPORT      69
 
@@ -54,6 +56,11 @@
 #define READ_RES__UNKNOWN_CMD		0xFF
 
 #define PACKED  __attribute__((__packed__))
+
+typedef struct
+{
+  u_int8_t size, proto;
+} PACKED TBeaconHeader;
 
 typedef struct
 {
@@ -82,6 +89,33 @@ typedef struct
   u_int32_t uptime, ip;
 } PACKED TBeaconReaderAnnounce;
 
+typedef struct
+{
+  TBeaconHeader hdr;
+  u_int8_t oid; //own id
+  u_int16_t tagID; //consists of oid an z-coordinate
+  u_int16_t signal; //counted signals (4bits for every signal strength) strength 0 is on the right side
+  u_int16_t x; //x coordinate of the tag
+  u_int16_t y; //y coordinate of the tag
+  //u_int8_t z :4;
+  u_int8_t building; //building-number where the tag is
+  u_int16_t reserved; //reserved bytes to fill the struct up to 16 bytes
+  u_int16_t crc; //crc checksum
+} PACKED TBeaconForwarder;
+
+
+typedef struct
+{
+  TBeaconHeader hdr;
+  u_int8_t building;
+  u_int8_t strengthAndZ;
+  u_int16_t x;
+  u_int16_t y;
+  u_int16_t oid;
+  u_int32_t seq;
+  u_int16_t crc;
+} PACKED TBeaconPositionTracker;
+
 typedef union
 {
   TBeaconProx prox;
@@ -103,7 +137,9 @@ typedef struct
 
 typedef union
 {
+  TBeaconForwarder forw;
   TBeaconWrapper pkt;
+  TBeaconPositionTracker pos;
   u_int32_t block[XXTEA_BLOCK_COUNT];
   u_int8_t byte[XXTEA_BLOCK_COUNT * 4];
 } PACKED TBeaconEnvelope;

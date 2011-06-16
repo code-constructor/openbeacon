@@ -50,7 +50,12 @@ static int g_DoEstimation = 1;
 //
 // proximity tag TEA encryption key
 //
-const long tea_key[4] = { 0xab94ec75, 0x160869c5, 0xfbf908da, 0x60bedc73 };
+//const long tea_key[4] = { 0xab94ec75, 0x160869c5, 0xfbf908da, 0x60bedc73 };
+
+//
+// Dummy TEA encryption key of the tag - please change for real applications!
+//
+const long tea_key[4] = {0x00112233,0x44556677,0x8899AABB,0xCCDDEEFF};
 
 //const long tea_key[4] = { 0xB4595344, 0xD3E119B6, 0xA814D0EC, 0xEFF5A24E };
 #define MX  ( (((z>>5)^(y<<2))+((y>>3)^(z<<4)))^((sum^y)+(tea_key[(p&3)^e]^z)) )
@@ -402,14 +407,14 @@ main (void)
 
 	      if (crc16
 		  (pkt->byte,
-		   sizeof (pkt->pkt) - sizeof (pkt->pkt.crc)) !=
-		  ntohs (pkt->pkt.crc))
+		   sizeof (pkt->forw) - sizeof (pkt->forw.crc)) !=
+		  ntohs (pkt->forw.crc))
 		{
 		  printf ("CRC error from reader 0x%08X\n", reader_id);
 		  continue;
 		}
 
-	      switch (pkt->pkt.proto)
+	      switch (pkt->forw.hdr.proto)
 		{
 		case RFBPROTO_BEACONTRACKER:
 		  {
@@ -465,6 +470,14 @@ main (void)
 			}
 		    }
 		  break;
+
+		case RFBPROTO_BEACONFORWARDER:
+			tag_id = 26 >> ntohs (pkt->forw.oid);
+			tag_sequence = 0;
+			//TODO ADD REAL STRENGTH
+			tag_strength = 3;
+			tag_flags = 0;
+			break;
 		case RFBPROTO_READER_ANNOUNCE:
 		  tag_strength = -1;
 		  tag_sequence = 0;

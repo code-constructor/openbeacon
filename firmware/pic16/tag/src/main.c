@@ -4,23 +4,23 @@
  *
  * Copyright 2006 Milosch Meriac <meriac@openbeacon.de>
  *
-/***************************************************************
+ /***************************************************************
 
-/*
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; version 2.
+ /*
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; version 2.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ You should have received a copy of the GNU General Public License along
+ with this program; if not, write to the Free Software Foundation, Inc.,
+ 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-*/
+ */
 
 #define OPENBEACON_ENABLEENCODE
 
@@ -37,144 +37,122 @@ __EEPROM_DATA (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
 
 volatile const u_int32_t oid = 0xFFFFFFFF, seed = 0xFFFFFFFF;
 
-static const long xxtea_key[4] =
-  { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF };
+static const long xxtea_key[4] = { 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+		0xFFFFFFFF };
 static u_int32_t seq = 0;
 static u_int16_t code_block;
 
-typedef struct
-{
-  u_int8_t size1, opcode1, rf_setup;
-  u_int8_t size2, opcode2;
-  TBeaconEnvelope env;
-  u_int8_t eot;
+typedef struct {
+	u_int8_t size1, opcode1, rf_setup;
+	u_int8_t size2, opcode2;
+	TBeaconEnvelope env;
+	u_int8_t eot;
 } TMacroBeacon;
 
-static TMacroBeacon g_MacroBeacon = {
-  0x02,				// Size
-  NRF_REG_RF_SETUP | WRITE_REG,		// Setup RF Options
-  RFB_RFOPTIONS,
+static TMacroBeacon g_MacroBeacon = { 0x02, // Size
+		NRF_REG_RF_SETUP | WRITE_REG, // Setup RF Options
+		RFB_RFOPTIONS,
 
-  sizeof (TBeaconEnvelope) + 1,	// Size
-  WR_TX_PLOAD			// Transmit Packet Opcode
-};
+		sizeof(TBeaconEnvelope) + 1, // Size
+		WR_TX_PLOAD // Transmit Packet Opcode
+		};
 
-static unsigned long
-htonl (unsigned long src)
-{
-  unsigned long res;
+static unsigned long htonl(unsigned long src) {
+	unsigned long res;
 
-  ((unsigned char *) &res)[0] = ((unsigned char *) &src)[3];
-  ((unsigned char *) &res)[1] = ((unsigned char *) &src)[2];
-  ((unsigned char *) &res)[2] = ((unsigned char *) &src)[1];
-  ((unsigned char *) &res)[3] = ((unsigned char *) &src)[0];
+	((unsigned char *) &res)[0] = ((unsigned char *) &src)[3];
+	((unsigned char *) &res)[1] = ((unsigned char *) &src)[2];
+	((unsigned char *) &res)[2] = ((unsigned char *) &src)[1];
+	((unsigned char *) &res)[3] = ((unsigned char *) &src)[0];
 
-  return res;
+	return res;
 }
 
-static unsigned short
-htons (unsigned short src)
-{
-  unsigned short res;
+static unsigned short htons(unsigned short src) {
+	unsigned short res;
 
-  ((unsigned char *) &res)[0] = ((unsigned char *) &src)[1];
-  ((unsigned char *) &res)[1] = ((unsigned char *) &src)[0];
+	((unsigned char *) &res)[0] = ((unsigned char *) &src)[1];
+	((unsigned char *) &res)[1] = ((unsigned char *) &src)[0];
 
-  return res;
+	return res;
 }
 
 #define SHUFFLE(a,b) 	tmp=g_MacroBeacon.env.datab[a];\
 			g_MacroBeacon.env.datab[a]=g_MacroBeacon.env.datab[b];\
 			g_MacroBeacon.env.datab[b]=tmp;
 
-static void
-shuffle_tx_byteorder (void)
-{
-  unsigned char tmp;
+static void shuffle_tx_byteorder(void) {
+	unsigned char tmp;
 
-  SHUFFLE (0 + 0, 3 + 0);
-  SHUFFLE (1 + 0, 2 + 0);
-  SHUFFLE (0 + 4, 3 + 4);
-  SHUFFLE (1 + 4, 2 + 4);
-  SHUFFLE (0 + 8, 3 + 8);
-  SHUFFLE (1 + 8, 2 + 8);
-  SHUFFLE (0 + 12, 3 + 12);
-  SHUFFLE (1 + 12, 2 + 12);
+	SHUFFLE (0 + 0, 3 + 0);
+	SHUFFLE (1 + 0, 2 + 0);
+	SHUFFLE (0 + 4, 3 + 4);
+	SHUFFLE (1 + 4, 2 + 4);
+	SHUFFLE (0 + 8, 3 + 8);
+	SHUFFLE (1 + 8, 2 + 8);
+	SHUFFLE (0 + 12, 3 + 12);
+	SHUFFLE (1 + 12, 2 + 12);
 }
 
-static unsigned short
-crc16 (const unsigned char *buffer, unsigned char size)
-{
-  unsigned short crc = 0xFFFF;
-  if (buffer)
-    {
-      while (size--)
-	{
-	  crc = (crc >> 8) | (crc << 8);
-	  crc ^= *buffer++;
-	  crc ^= ((unsigned char) crc) >> 4;
-	  crc ^= crc << 12;
-	  crc ^= (crc & 0xFF) << 5;
+static unsigned short crc16(const unsigned char *buffer, unsigned char size) {
+	unsigned short crc = 0xFFFF;
+	if (buffer) {
+		while (size--) {
+			crc = (crc >> 8) | (crc << 8);
+			crc ^= *buffer++;
+			crc ^= ((unsigned char) crc) >> 4;
+			crc ^= crc << 12;
+			crc ^= (crc & 0xFF) << 5;
+		}
 	}
-    }
-  return crc;
+	return crc;
 }
 
-static void
-store_incremented_codeblock (void)
-{
-  if (code_block < 0xFFFF)
-    {
-      code_block++;
-      EEPROM_WRITE (0, (u_int8_t) (code_block));
-      sleep_jiffies (JIFFIES_PER_MS (10));
-      EEPROM_WRITE (1, (u_int8_t) (code_block >> 8));
-      sleep_jiffies (JIFFIES_PER_MS (10));
-    }
-}
-
-static void
-xxtea_encode (void)
-{
-  u_int32_t z, y, sum;
-  u_int8_t p, q, e;
-
-  /* prepare first XXTEA round */
-  z = g_MacroBeacon.env.data[TEA_ENCRYPTION_BLOCK_COUNT - 1];
-  sum = 0;
-
-  /* setup rounds counter */
-  q = (6 + 52 / TEA_ENCRYPTION_BLOCK_COUNT);
-
-  /* start encryption */
-  while (q--)
-    {
-      sum += 0x9E3779B9UL;
-      e = (sum >> 2) & 3;
-
-      for (p = 0; p < TEA_ENCRYPTION_BLOCK_COUNT; p++)
-	{
-	  y =
-	    g_MacroBeacon.env.
-	    data[(p + 1) & (TEA_ENCRYPTION_BLOCK_COUNT - 1)];
-	  z =
-	    g_MacroBeacon.env.data[p] + ((z >> 5 ^ y << 2) +
-					 (y >> 3 ^ z << 4) ^ (sum ^ y) +
-					 (xxtea_key[p & 3 ^ e] ^ z));
-	  g_MacroBeacon.env.data[p] = z;
+static void store_incremented_codeblock(void) {
+	if (code_block < 0xFFFF) {
+		code_block++;
+		EEPROM_WRITE(0, (u_int8_t) (code_block));
+		sleep_jiffies(JIFFIES_PER_MS (10));
+		EEPROM_WRITE(1, (u_int8_t) (code_block >> 8));
+		sleep_jiffies(JIFFIES_PER_MS (10));
 	}
-    }
+}
+
+static void xxtea_encode(void) {
+	u_int32_t z, y, sum;
+	u_int8_t p, q, e;
+
+	/* prepare first XXTEA round */
+	z = g_MacroBeacon.env.data[TEA_ENCRYPTION_BLOCK_COUNT - 1];
+	sum = 0;
+
+	/* setup rounds counter */
+	q = (6 + 52 / TEA_ENCRYPTION_BLOCK_COUNT);
+
+	/* start encryption */
+	while (q--) {
+		sum += 0x9E3779B9UL;
+		e = (sum >> 2) & 3;
+
+		for (p = 0; p < TEA_ENCRYPTION_BLOCK_COUNT; p++) {
+			y = g_MacroBeacon.env. data[(p + 1) & (TEA_ENCRYPTION_BLOCK_COUNT
+					- 1)];
+			z = g_MacroBeacon.env.data[p] + ((z >> 5 ^ y << 2) + (y >> 3 ^ z
+					<< 4) ^ (sum ^ y) + (xxtea_key[p & 3 ^ e] ^ z));
+			g_MacroBeacon.env.data[p] = z;
+		}
+	}
 }
 
 //compare two 4bit numbers to one byte
-static unsigned char
-compare(unsigned char a, unsigned char b){
+static unsigned char compare(unsigned char a, unsigned char b) {
 	unsigned char ret;
 
 	ret = (a << 4) | b;
 
 	return ret;
 }
+
 
 void
 main (void)
@@ -260,34 +238,32 @@ main (void)
 	TRISA = CONFIG_CPU_TRISA;
 
 #ifdef CONFIG_HIRES_LOCATION
-	if((i & 4)==0)
-	    CONFIG_PIN_TX_POWER = NRF_TX_POWER_LOW;
+	if ((i & 4) == 0)
+		CONFIG_PIN_TX_POWER = NRF_TX_POWER_LOW;
 #endif CONFIG_HIRES_LOCATION
 
 	// send it away
-	nRFCMD_Macro ((unsigned char *) &g_MacroBeacon);
+	nRFCMD_Macro((unsigned char *) &g_MacroBeacon);
 
-	if (!i && ((((unsigned char)seq) & 0x7) == 0))
-	  CONFIG_PIN_LED = 1;
-	nRFCMD_Execute ();
-	CONFIG_PIN_LED = 0;
+	if (!i && ((((unsigned char) seq) & 0x7) == 0))
+		CONFIG_PIN_LED = 1;
+		nRFCMD_Execute();
+		CONFIG_PIN_LED = 0;
 #ifdef CONFIG_HIRES_LOCATION
-	CONFIG_PIN_TX_POWER = NRF_TX_POWER_HIGH;
+		CONFIG_PIN_TX_POWER = NRF_TX_POWER_HIGH;
 #endif CONFIG_HIRES_LOCATION
-	if (++i >= CONFIG_MAX_POWER_LEVELS)
-	  {
-	    i = CONFIG_MIN_POWER_LEVEL;
-	    seq++;
-	  }
-      }
+	if (++i >= CONFIG_MAX_POWER_LEVELS) {
+		i = CONFIG_MIN_POWER_LEVEL;
+		seq++;
+	}
+     }
 
-  // rest in peace
-  // when seq counter is exhausted
-  while (1)
-    {
-      sleep_jiffies (JIFFIES_PER_MS (95));
-      CONFIG_PIN_LED = 1;
-      sleep_jiffies (JIFFIES_PER_MS (5));
-      CONFIG_PIN_LED = 0;
-    }
+	// rest in peace
+	// when seq counter is exhausted
+	while (1) {
+		sleep_jiffies(JIFFIES_PER_MS (95));
+		CONFIG_PIN_LED = 1;
+		sleep_jiffies(JIFFIES_PER_MS (5));
+		CONFIG_PIN_LED = 0;
+	}
 }

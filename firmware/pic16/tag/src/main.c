@@ -255,7 +255,7 @@ main (void)
 	TRISA = CONFIG_CPU_TRISA & ~0x02;
 	CONFIG_PIN_SENSOR = 0;
 	sleep_jiffies (JIFFIES_PER_MS (10) +
-		(rand () % JIFFIES_PER_MS (180)));
+		(rand () % JIFFIES_PER_MS (90)));
 	CONFIG_PIN_SENSOR = 1;
 	TRISA = CONFIG_CPU_TRISA;
 

@@ -192,7 +192,7 @@ main (void)
   OSCCON = CONFIG_CPU_OSCCON;
 #ifndef CONFIG_HIRES_LOCATION
   CONFIG_PIN_TX_POWER = NRF_TX_POWER_HIGH;
-#endif/*CONFIG_HIRES_LOCATION*/
+#endif/*CONFIG_HIRES_LOCATION*/ CONFIG_HIDE_PROXIMITY_SIGNAL_STRENGTH
 
   timer_init ();
 
@@ -218,7 +218,8 @@ main (void)
   // change
   seq = ((u_int32_t) (code_block - 1)) << 16;
 
-  i = 0;
+  i = CONFIG_MIN_POWER_LEVEL;
+  
   if (code_block != 0xFFFF)
     while (1)
       {
@@ -275,7 +276,7 @@ main (void)
 #endif CONFIG_HIRES_LOCATION
 	if (++i >= CONFIG_MAX_POWER_LEVELS)
 	  {
-	    i = 0;
+	    i = CONFIG_MIN_POWER_LEVEL;
 	    seq++;
 	  }
       }

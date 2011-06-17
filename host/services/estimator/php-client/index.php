@@ -24,34 +24,17 @@
 
     $readers = array(
 	1 => array (
-	    array(208, 230, 172),
-	    array(209, 375,  13),
-	    array(210, 475,  13),
-	    array(211, 505,  13),
-	    array(212, 630,  13),
-	    array(213, 685, 150),
-	    array(214, 685, 290),
-	    array(236, 230, 390),
-	    array(241, 620, 290)
+	   
 	),
 	2 => array (
-	    array(215, 730, 485),
-	    array(216, 600, 150),
-	    array(217, 365, 150),
-	    array(218, 140, 100),
-	    array(219, 140, 405),
-	    array(220, 365, 410),
-	    array(221, 600, 410)
+	    array(112, 5, 5),
+	    array(113, 75, 5),
+	    array(114, 5, 91),
+	    array(115, 75, 91),
+	    
 	),
 	3 => array (
-	    array(222,  20, 208),
-	    array(223, 750, 233),
-	    array(225, 620, 145),
-	    array(226, 390, 145),
-	    array(227, 110, 142),
-	    array(228, 111, 410),
-	    array(229, 390, 410),
-	    array(230, 620, 410)
+	    
 	)
     );
 
@@ -102,7 +85,7 @@
 	    $x = $position['x'];
 	    $y = $position['y'];
 	    imagefilledellipse($im, $x, $y, 6, 6, $tag_color);
-	    imagestring($im, 4, $x,$y+6, $id, $text_color);
+	    imagestring($im, 4, $x,$y+6, $id."[".$position['x'].",".$position['y']."]", $text_color);
 	    if(isset($position['proximity'])&&(($prox = intval($position['proximity']))!=0))
 	    {
 		$x2 = $tag[$prox]['x'];

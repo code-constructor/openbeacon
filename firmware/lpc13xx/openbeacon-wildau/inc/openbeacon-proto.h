@@ -1,0 +1,143 @@
+/****************************************************************************
+ *
+ * OpenBeacon.org - OnAir protocol specification and definition
+ *
+ * Copyright 2007 Milosch Meriac <meriac@openbeacon.de>
+ *
+ ****************************************************************************
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; version 2.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+*/
+
+#ifndef __OPENBEACON_PROTO_H__
+#define __OPENBEACON_PROTO_H__
+
+#define CONFIG_FORWARDER_CHANNEL 81
+#define CONFIG_REFTAG_CHANNEL 77
+
+#define XXTEA_BLOCK_COUNT 4
+
+#define RFBPROTO_BEACONPOSITIONTRACKER	27
+#define RFBPROTO_BEACONCOLLECTEDFORWARDER 28
+
+#define PROX_MAX 4
+
+#define RFBFLAGS_ACK			0x01
+#define RFBFLAGS_SENSOR			0x02
+#define RFBFLAGS_INFECTED		0x04
+
+/* RFBPROTO_READER_COMMAND related opcodes */
+#define READER_CMD_NOP			0x00
+#define READER_CMD_RESET		0x01
+#define READER_CMD_RESET_CONFIG		0x02
+#define READER_CMD_RESET_FACTORY	0x03
+#define READER_CMD_RESET_WIFI		0x04
+#define READER_CMD_SET_OID		0x05
+/* RFBPROTO_READER_COMMAND related results */
+#define READ_RES__OK			0x00
+#define READ_RES__DENIED		0x01
+#define READ_RES__UNKNOWN_CMD		0xFF
+
+/*collection parameter*/
+#define COLLECTION_SIZE 10
+
+typedef struct
+{
+  uint8_t strength;
+  uint16_t oid_last_seen;
+  uint8_t seen_low;
+  uint8_t seen_high;
+  uint8_t reserved;
+  uint32_t seq;
+} PACKED TBeaconTracker;
+
+typedef struct
+{
+  uint16_t oid_prox[PROX_MAX];
+  uint16_t seq;
+} PACKED TBeaconProx;
+
+typedef struct
+{
+  uint8_t opcode, res;
+  uint32_t data[2];
+} PACKED TBeaconReaderCommand;
+
+typedef struct
+{
+  uint8_t opcode, strength;
+  uint32_t uptime, ip;
+} PACKED TBeaconReaderAnnounce;
+
+typedef union
+{
+  TBeaconProx prox;
+  TBeaconTracker tracker;
+  TBeaconReaderCommand reader_command;
+  TBeaconReaderAnnounce reader_announce;
+} PACKED TBeaconPayload;
+
+typedef struct
+{
+  uint8_t proto;
+  uint16_t oid;
+  uint8_t flags;
+
+  TBeaconPayload p;
+
+  uint16_t crc;
+} PACKED TBeaconWrapper;
+
+typedef struct
+{
+  uint8_t size, proto;
+} PACKED TBeaconHeader;
+
+//struct for iCampus-Wildau Project
+typedef struct
+{
+	TBeaconHeader hdr;
+	uint8_t building;
+	uint8_t strengthAndZ; //first 4 bits the strength
+	uint16_t x;
+	uint16_t y;
+	uint16_t oid;
+	uint32_t seq;
+	uint16_t crc;
+} PACKED TBeaconPositionTracker;
+
+//struct to forward all collected data of a tag
+typedef struct
+{
+	TBeaconHeader hdr;
+	uint8_t oid; //own id
+	uint16_t tagId; //id of the tag
+	uint32_t signals; //quantitative evaluation of all received signal strengths(0-3)
+	uint16_t x; //x-coordinate
+	uint16_t y; //y-coordinate
+	uint8_t building; //building id
+	uint16_t crc;
+} PACKED TBeaconCollectedForwarder;
+
+typedef union
+{
+  TBeaconCollectedForwarder forwarder;
+  TBeaconPositionTracker pos;
+  TBeaconWrapper pkt;
+  uint32_t block[XXTEA_BLOCK_COUNT];
+  uint8_t byte[XXTEA_BLOCK_COUNT * 4];
+} PACKED TBeaconEnvelope;
+
+#endif/*__OPENBEACON_PROTO_H__*/

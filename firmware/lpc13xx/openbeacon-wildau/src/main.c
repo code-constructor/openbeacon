@@ -397,6 +397,8 @@ main (void)
 	   {
 	      //add informations of the received package to data structure
 	      collectForwardData();
+	      /* increment counter */
+      	      i++;
  	      /* fire up LED to indicate rx */
 	      GPIOSetValue (1, 1, 1);
 	      /* light LED for 2ms */
@@ -448,14 +450,12 @@ main (void)
 		}
 	    }
             }
+	    //i = 0;
           }
 
       /* powering down */
       //nRFAPI_PowerDown ();
       LPC_SYSCON->SSPCLKDIV = 0x00;
-
-      /* increment counter */
-      i++;
     }
   return 0;
 }

@@ -111,7 +111,7 @@ void collectForwardData(void)
 
 		//add new tag to collection
 		if(g_collection[i].tagId == 0){
-			g_collection[i].oid = 1;
+			g_collection[i].oid = 22;
 			g_collection[i].x = g_Beacon.pos.x;
 			g_collection[i].y = g_Beacon.pos.y;
 			g_collection[i].tagId = g_Beacon.pos.oid;
@@ -360,7 +360,10 @@ main (void)
   nRFAPI_SetChannel(CONFIG_REFTAG_CHANNEL);
   /* set tx power power to high */
   nRFCMD_Power (1);
-
+  /* switch to RX mode */
+  nRFAPI_SetRxMode(1);
+  /* transmit data */
+  nRFCMD_CE(1);
   /* blink LED for 1s to show readyness */
   GPIOSetValue (1, 2, 1);
   pmu_sleep_ms (1000);
@@ -378,54 +381,37 @@ main (void)
 
       /* getting SPI back up again */
       LPC_SYSCON->SSPCLKDIV = SSPdiv;
+      if (nRFCMD_IRQ ()){	
+	do{
+	   // read packet from nRF chip
+	   nRFCMD_RegReadBuf (RD_RX_PLOAD, g_Beacon.byte, sizeof (g_Beacon));
+		
+	   // adjust byte order and decode
+	   xxtea_decode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
 
-      /* blink every 16th packet transmitted */
-	  /* switch to RX mode */
-	  nRFAPI_SetRxMode (1);
-	  nRFCMD_CE (1);
-	  pmu_sleep_ms (20);
-	  nRFCMD_CE (0);
-	  /* fire up LED */
-	  //GPIOSetValue (1, 2, 1);
-	  /* wait till RX stops */
-	  //pmu_sleep_ms (10);
-	  /* turn LED off */
-	  //GPIOSetValue (1, 2, 0);
-	  nRFAPI_SetRxMode (0);
-	  if (nRFCMD_IRQ ())
-	    {
-	      do
-		{
-		  // read packet from nRF chip
-		  nRFCMD_RegReadBuf (RD_RX_PLOAD, g_Beacon.byte,
-				     sizeof (g_Beacon));
-
-		  // adjust byte order and decode
-		  xxtea_decode (g_Beacon.block, XXTEA_BLOCK_COUNT, xxtea_key);
-
-		  // verify the CRC checksum
-		  crc = crc16 (g_Beacon.byte,
-			       sizeof (g_Beacon) - sizeof (uint16_t));
-
-		  if ((ntohs (g_Beacon.forwarder.crc) == crc) &&
+	   // verify the CRC checksum
+	   crc = crc16 (g_Beacon.byte, sizeof (g_Beacon) - sizeof (uint16_t));
+	
+	   if ((ntohs (g_Beacon.forwarder.crc) == crc) &&
 		      (g_Beacon.forwarder.hdr.proto == RFBPROTO_BEACONPOSITIONTRACKER))
-		    {
-		      //add informations of the received package to data structure
-		      collectForwardData();
-		      /* fire up LED to indicate rx */
-		      GPIOSetValue (1, 1, 1);
-		      /* light LED for 2ms */
-		      pmu_sleep_ms (2);
-		      /* turn LED off */
-		      GPIOSetValue (1, 1, 0);
-		    }
-		  status = nRFAPI_GetFifoStatus ();
-		}
-	      while ((status & FIFO_RX_EMPTY) == 0);
-	    }
+	   {
+	      //add informations of the received package to data structure
+	      collectForwardData();
+ 	      /* fire up LED to indicate rx */
+	      GPIOSetValue (1, 1, 1);
+	      /* light LED for 2ms */
+	      pmu_sleep_ms (2);
+	      /* turn LED off */
+	      GPIOSetValue (1, 1, 0);
+	   }
+	   status = nRFAPI_GetFifoStatus ();
+	 }
+	 while ((status & FIFO_RX_EMPTY) == 0);
+       }
 	  nRFAPI_ClearIRQ (MASK_IRQ_FLAGS);
 
 	
+	if(i >= 10){
 	  for(int i = 0; i < COLLECTION_SIZE; i++){
 	  /* prepare packet */
 	  /*bzero (&g_Beacon, sizeof (g_Beacon));
@@ -455,16 +441,17 @@ main (void)
 
 			/* send away packet */
 	 		/* transmit packet */
-	  		nRF_tx (8);
+	  		nRF_tx (7);
 
 			g_collection[i].tagId = 0;
 			g_collection[i].signals = 0;
 		}
 	    }
             }
+          }
 
       /* powering down */
-      nRFAPI_PowerDown ();
+      //nRFAPI_PowerDown ();
       LPC_SYSCON->SSPCLKDIV = 0x00;
 
       /* increment counter */

@@ -36,6 +36,8 @@ static uint16_t tag_id;
 static TDeviceUID device_uuid;
 /* random seed */
 static uint32_t random_seed;
+static uint8_t sendAwayFlag;
+static uint16_t counter;
 
 #define TX_STRENGTH_OFFSET 2
 
@@ -111,7 +113,7 @@ void collectForwardData(void)
 
 		//add new tag to collection
 		if(g_collection[i].tagId == 0){
-			g_collection[i].oid = 22;
+			g_collection[i].oid = 43;
 			g_collection[i].x = g_Beacon.pos.x;
 			g_collection[i].y = g_Beacon.pos.y;
 			g_collection[i].tagId = g_Beacon.pos.oid;
@@ -369,13 +371,19 @@ main (void)
   pmu_sleep_ms (1000);
   GPIOSetValue (1, 2, 0);
 
+  //set send away flag
+  sendAwayFlag = 0;
+
   /* disable unused jobs */
   SSPdiv = LPC_SYSCON->SSPCLKDIV;
   i = 0;
+  counter = 0;
   seen_low = seen_high = 0;
   oid_last_seen = 0;
   while (1)
     {
+      sendAwayFlag = 0;
+      counter = 0;
       /* transmit every 50-150ms */
       pmu_sleep_ms (50 + rnd (100));
 
@@ -397,8 +405,11 @@ main (void)
 	   {
 	      //add informations of the received package to data structure
 	      collectForwardData();
+	      //check if flag is set
+	      if(sendAwayFlag != 1)
+      	      	sendAwayFlag = 1;
 	      /* increment counter */
-      	      i++;
+	      counter++;
  	      /* fire up LED to indicate rx */
 	      GPIOSetValue (1, 1, 1);
 	      /* light LED for 2ms */
@@ -408,29 +419,16 @@ main (void)
 	   }
 	   status = nRFAPI_GetFifoStatus ();
 	 }
-	 while ((status & FIFO_RX_EMPTY) == 0);
+	 while ((status & FIFO_RX_EMPTY) == 0 || counter < MAX_PACKET_RECEIVE_COUNT_BEFORE_SEND);
+
+	 if((status & FIFO_RX_EMPTY) != 0)
+	    counter = MAX_PACKET_RECEIVE_COUNT_BEFORE_SEND;
        }
 	  nRFAPI_ClearIRQ (MASK_IRQ_FLAGS);
 
 	
-	if(i >= 10){
+	if(sendAwayFlag > 0 && counter >= MAX_PACKET_RECEIVE_COUNT_BEFORE_SEND ){
 	  for(int i = 0; i < COLLECTION_SIZE; i++){
-	  /* prepare packet */
-	  /*bzero (&g_Beacon, sizeof (g_Beacon));
-	  g_Beacon.pkt.proto = RFBPROTO_BEACONTRACKER;
-	  g_Beacon.pkt.oid = htons (tag_id);
-	  g_Beacon.pkt.p.tracker.strength = (i & 1) + TX_STRENGTH_OFFSET;
-	  g_Beacon.pkt.p.tracker.seq = htonl (LPC_TMR32B0->TC);
-	  g_Beacon.pkt.p.tracker.oid_last_seen = oid_last_seen;
-	  g_Beacon.pkt.p.tracker.seen_low = seen_low;
-	  g_Beacon.pkt.p.tracker.seen_high = seen_high;
-	  g_Beacon.pkt.p.tracker.reserved = 0;
-	  g_Beacon.pkt.crc =
-	    htons (crc16
-		   (g_Beacon.byte,
-		    sizeof (g_Beacon) - sizeof (g_Beacon.pkt.crc)));
-	*/
-
 	   /* setup tracking packet */
 	   bzero(&g_Beacon, sizeof(g_Beacon));
 	   //send away if the dataset not empty
@@ -449,9 +447,9 @@ main (void)
 			g_collection[i].signals = 0;
 		}
 	    }
-            }
+           }
 	    //i = 0;
-          }
+         }
 
       /* powering down */
       //nRFAPI_PowerDown ();
